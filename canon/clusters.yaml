@@ -1,0 +1,106 @@
+clusters:
+  cmmg:
+    aliases: [cmti]                       # cmfe partitions use cmti hardware
+    ssh:
+      user: <CLUSTER_USER>
+      host: <CLUSTER_HOST>
+    mount:
+      local:  ~/cluster-mounts/cmmg/
+      remote: /cmmc/ptmp/<CLUSTER_USER>/         # user ptmp; pilot scope ends here
+      sshfs_options:                      # L15 — fixes stale-view problem
+        - auto_cache                      # invalidates cache on mtime/size change (the load-bearing one)
+        - attr_timeout=2
+        - entry_timeout=2
+        - negative_timeout=2
+        - reconnect
+        - ServerAliveInterval=30
+      # NOTE: do NOT include `kernel_cache=no` — that's invalid syntax;
+      # `kernel_cache` is a FUSE boolean flag, presence=on, absence=off.
+      # Default already excludes the kernel buffer cache. (See L15.)
+      command_example: >-
+        sshfs <CLUSTER_USER>@<CLUSTER_HOST>:/cmmc/ptmp/<CLUSTER_USER>
+        ~/cluster-mounts/cmmg
+        -o auto_cache,attr_timeout=2,entry_timeout=2,negative_timeout=2,reconnect,ServerAliveInterval=30
+    paths:
+      ptmp:       /cmmc/ptmp/<CLUSTER_USER>
+      potentials: /cmmc/ptmp/<CLUSTER_USER>/POTENTIALS    # mount-visible; pilot can verify
+      home:       /home/<CLUSTER_USER>                    # reference-only; never written
+    queue: slurm
+    gpu: false
+    partitions:
+      - { name: p.cmmg, scope: ">1 node" }
+      - { name: s.cmmg, scope: "<=1 node", default_for_1core: true }
+      - { name: p.cmfe, scope: ">1 node, cmti hardware" }
+      - { name: s.cmfe, scope: "<=1 node, cmti hardware" }
+    # Partition selection rule (lesson from 2026-05-29 walk):
+    # For 1-core / single-node runs, use s.cmmg even though Erik's older
+    # example submit scripts used p.cmmg with 128 tasks. Don't carry
+    # large-job patterns into small-job scripts.
+    modules:
+      lammps:
+        - lammps/241119
+        - lammps/250722                   # observed default in Erik's examples
+      # Per-module capability captures live in sibling files
+      # (`lammps-capabilities-<cluster>-<version>.md`). For lammps/250722
+      # see `canon/lammps-capabilities-cmmg-250722.md` — installed
+      # packages, build flags, accelerator config, binary path,
+      # style snippets. Refresh on module rebuild.
+    sbatch_defaults:
+      get-user-env: L
+      hint: nomultithread
+      mail-type: BEGIN,END,FAIL
+      mail-user: <NOTIFY_EMAIL>
+      output: "%x.out"
+      error: "%x.err"
+    occasional_overrides:
+      reservation: Erik                   # only when Erik says "urgent"
+    docs_url: "https://docs.mpcdf.mpg.de/doc/computing/clusters/systems/Sustainable_Materials.html"
+    downtimes:
+      pattern: "~every 4 months"
+      typical_duration: 1d
+    quirks:
+      # L14 — files produced by cluster-side processes (slurm job outputs,
+      # LAMMPS dumps, etc.) appear on the sshfs mount but cannot be
+      # deleted via the mount (permission denied). Cleanup must go
+      # through Erik's terminal (ssh in, or remote rm via ssh "...").
+      # The mount is a read window for these files, not a duplicate.
+      - cluster_created_files_undeletable_via_mount
+      # L15 — sshfs mount needs auto_cache + short attr/entry timeouts
+      # to avoid stale-view problem when jobs update files cluster-side.
+      # See mount.sshfs_options above.
+      - sshfs_default_options_show_stale_views
+      # Established 2026-05-31. The cmmg lammps modules are MPI-built
+      # only (no lmp_serial). The binary calls MPI_Init() before
+      # processing any flag, including `-h`, so a bare `lmp ...` on the
+      # login node aborts with `PMI2_Job_GetId returned 14`. Rule:
+      # ALL lmp invocations on cmmg go through sbatch, including
+      # diagnostic / capability probes. `I_MPI_HYDRA_BOOTSTRAP=fork
+      # mpirun -n 1 lmp -h` is a known login-node workaround but is
+      # not the normal path — Erik prefers sbatch for everything.
+      - lmp_invocations_require_sbatch_on_cmmg
+      # Established 2026-05-31. Cluster-bound files (LAMMPS inputs,
+      # submit scripts, anything an sbatch will read) must be written
+      # directly via the cluster mount (~/cluster-mounts/cmmg/...),
+      # not only to the Mac project tree with an rsync proposed
+      # afterward. The mount IS the cluster filesystem. If the mount
+      # is unavailable when needed, the pilot must complain (ask Erik
+      # to mount it) instead of silently working on the Mac side and
+      # deferring the push.
+      - cluster_bound_files_write_via_mount
+      # Established 2026-05-31, refined later same day. The reverse
+      # direction: cluster-produced outputs are pulled to Mac, but
+      # CURATED, not kitchen-sink. Keep-list (mirror to Mac): *.in,
+      # *.slurm, *.py, *.dat, *.yaml, *.md, *.pdf, plots_*/ subdirs.
+      # Noise-list (NEVER mirror): per-iteration LAMMPS *.log,
+      # log.lammps, start_time.txt, end_time.txt, slurm *.err/*.out,
+      # AppleDouble sidecars (._*, .DS_Store), __pycache__/.
+      # Structures (.data, .data.zst, .dump): ASK BEFORE COPYING;
+      # default no; if Erik approves, pull via zstd -19 per the
+      # Thread-01 mile-pebble pattern. Helper script:
+      # `canon/templates/mirror-cluster-to-mac-curated.sh` (rsync with
+      # filter rules so noise can't sneak in).
+      - important_outputs_mirrored_to_mac
+
+  raven:        { status: not-seeded }    # MPCDF; CPU+GPU; fortnightly downtimes
+  viper:        { status: not-seeded }    # MPCDF; GPU only; fortnightly downtimes
+  nhr_erlangen: { status: not-seeded }    # stability tbd

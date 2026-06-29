@@ -1,0 +1,115 @@
+#!/bin/bash
+# lint-lammps-input.sh — Layer 1 pre-flight checks for LAMMPS input files
+#
+# Usage:   lint-lammps-input.sh <input-file>
+# Exit:    0 if all checks pass; non-zero with diagnostics on first failure.
+#
+# Mechanizes ARCHITECTURE.md §12 Layer 1 checklist as encoded in
+# ~/Desktop/DEVEL/LLM-LMPS/canon/style/lammps.md §1.1–1.5, 1.8.
+#
+# Does NOT cover (still manual review required):
+#   §1.4 MEAM library element index alignment with parameter file
+#   §1.6 log directive position (first non-comment line)
+#   §1.7 thermo cadence × expected iterations ≥ 1
+#   §1.9 LAMMPS version doc-check
+#
+# Run as part of every pre-flight, before any submit.
+
+set -euo pipefail
+
+if [[ $# -ne 1 ]]; then
+  echo "Usage: $0 <input-file>" >&2
+  exit 2
+fi
+
+INPUT="$1"
+
+if [[ ! -r "$INPUT" ]]; then
+  echo "FAIL: cannot read $INPUT" >&2
+  exit 2
+fi
+
+fail() {
+  echo "FAIL: $1" >&2
+  exit 1
+}
+
+pass() {
+  echo "  ok: $1"
+}
+
+echo "Linting $INPUT ..."
+
+# §1.1 — Runtime-quantity variable syntax (L1)
+#   ${lx} etc. is parse-time string substitution; must be $(lx) for runtime evaluation.
+if grep -nE '\$\{(lx|ly|lz|press|p[xyz]{2}|fnorm|fmax|etotal|step|temp|pe|ke|vol|enthalpy|cpu)\}' "$INPUT"; then
+  fail "L1 — Runtime quantity referenced with \${...} (parse-time). Use \$(...) instead. See lines above."
+fi
+pass "L1 — no parse-time \${} on runtime quantities"
+
+# §1.2 — Generic filenames (L3, L20)
+#   Match generic names only when standalone — preceded by start-of-line,
+#   whitespace, '/', '=', or '"'. NOT preceded by '-' or other name chars,
+#   which would indicate the generic token is a suffix of a descriptive name
+#   (e.g., `Ni-fcc-Pezold-EAM-a0-result.txt` is fine, `a0-result.txt` is not).
+GENERIC_PATTERN='(^|[[:space:]/="])(dump\.out|restart\.data|log\.lammps|a0-result\.txt|relaxation-log\.dat|final-snapshot\.dump|tmp\.|out\.dat|data\.lammps|dump\.atom|dump\.custom)([[:space:]"]|$)'
+if grep -nE "$GENERIC_PATTERN" "$INPUT"; then
+  fail "L3/L20 — generic filename(s) above. Use descriptive names (structure-observable-potential...). Exception: shell-script bookkeeping like start_time.txt is OK (and not in this lint)."
+fi
+pass "L3/L20 — no generic LAMMPS-tutorial-default filenames"
+
+# §1.3 — ASCII-only (L2)
+#   Use `file -i` if available; fall back to LC_ALL=C grep for non-ASCII bytes.
+if command -v file >/dev/null 2>&1; then
+  CHARSET="$(file -bi "$INPUT" | sed -n 's/.*charset=\([^;]*\).*/\1/p')"
+  if [[ "$CHARSET" != "us-ascii" && "$CHARSET" != "binary" ]]; then
+    fail "L2 — non-ASCII charset detected ($CHARSET). Check for em-dash, en-dash, curly quotes, greek letters, non-breaking space."
+  fi
+else
+  if LC_ALL=C grep -nP '[^\x00-\x7F]' "$INPUT"; then
+    fail "L2 — non-ASCII byte(s) above."
+  fi
+fi
+pass "L2 — ASCII only"
+
+# §1.5 — fix print not used inside minimize block (L5)
+#   Scan the lines between the first `minimize` and the next `run` or EOF.
+#   If any `fix ... all print ...` appears in that range, fail.
+awk '
+  BEGIN { in_block = 0 }
+  /^[[:space:]]*minimize[[:space:]]/ { in_block = 1; next }
+  /^[[:space:]]*run[[:space:]]/      { in_block = 0 }
+  in_block && /^[[:space:]]*fix[[:space:]]+\S+[[:space:]]+\S+[[:space:]]+print[[:space:]]/ {
+    print NR": "$0; found = 1
+  }
+  END { exit (found ? 1 : 0) }
+' "$INPUT" || fail "L5 — \`fix print\` appears inside a minimize-active region. fix print does not fire during minimize iterations; use thermo_style custom with equal-style variables instead."
+pass "L5 — no fix print inside minimize block"
+
+# §1.6 — log directive present + first non-comment line
+LOG_LINE=$(awk '
+  /^[[:space:]]*#/ { next }
+  /^[[:space:]]*$/ { next }
+  { print NR": "$0; exit }
+' "$INPUT")
+if ! echo "$LOG_LINE" | grep -qE '^\s*[0-9]+:\s*log\s+\S+'; then
+  echo "WARN: first non-comment line is not a \`log <file>\` directive:" >&2
+  echo "      $LOG_LINE" >&2
+  echo "      L6 says log filename should be set at the very top. Continuing." >&2
+fi
+# (warn only — not all inputs follow this; minimization-only might not need it)
+
+# §1.8 — Placeholder substitution check
+#   Find ALL CAPS bare tokens >= 3 chars that aren't known LAMMPS keywords.
+#   This is a heuristic; report rather than fail.
+KNOWN_CAPS='NVE|NVT|NPT|NPH|MEAM|EAM|REAXFF|TERSOFF|MORSE|LJ|FCC|BCC|HCP|SC|PE|KE|CG|SD|FIRE|HFTN|SI|CGS|REAL|METAL|ATOMIC|CHARGE|FULL|BOND|ANGLE|DIHEDRAL|IMPROPER'
+SUSPECTS=$(grep -nE '\b[A-Z][A-Z0-9_]{2,}\b' "$INPUT" \
+  | grep -vE "\\b(${KNOWN_CAPS})\\b" \
+  || true)
+if [[ -n "$SUSPECTS" ]]; then
+  echo "WARN: potential unsubstituted ALL CAPS placeholders (review manually):" >&2
+  echo "$SUSPECTS" | head -20 >&2
+fi
+
+echo "All mechanical checks passed for $INPUT."
+exit 0
