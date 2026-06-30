@@ -4,6 +4,17 @@ Every Cowork session, on first interaction with Erik, runs through the
 following ritual before doing any project or framework work. The
 canonical concurrency rules and rationale are in ARCHITECTURE.md §17.
 
+## This framework is the entry point for "simulations"
+
+When Erik refers to **"simulations"**, **"LAMMPS"**, **"runs"**, or
+asks about which simulation projects are open/active, this framework is
+the entry point — engage it and run the ritual below. Do **not** browse
+`~/Desktop/DEVEL/` (or any other tree) to guess at simulation state.
+`DEVEL/` holds the *framework code* (this repo) and assorted tooling;
+it is **not** where the simulations live. The simulation projects and
+their data live in a separate **simulation folder**, whose location is
+**asked at startup, every session** (step 2 below) — never assumed.
+
 ## When to run the ritual
 
 - **First substantive turn of a new conversation** — always.
@@ -16,7 +27,9 @@ canonical concurrency rules and rationale are in ARCHITECTURE.md §17.
 
 ### 1. Read SESSIONS.md
 
-Open `~/Desktop/DEVEL/LLM-LMPS/SESSIONS.md` and parse the `active`
+Open the framework repo's `SESSIONS.md` (at the root of this project —
+currently `~/Desktop/DEVEL/LLM-LAMMPS-public/SESSIONS.md`; resolve it
+relative to the repo, not a hardcoded path) and parse the `active`
 section. Note:
 
 - Which sessions are currently active and in what mode
@@ -29,6 +42,11 @@ section. Note:
 Use `AskUserQuestion` (preferred — clean multiple-choice UX) or plain
 chat to ask:
 
+- **Simulation folder**: where do the simulation projects/data live
+  this session? **Always ask** — never assume `DEVEL` or any fixed
+  path. `DEVEL/` is the framework code, not the simulations. Record the
+  confirmed folder for the session (e.g. in the SESSIONS.md entry's
+  `notes`) and treat it as the working root for all pilot file ops.
 - **Mode**: `pilot` | `designer` | `designer+pilot`
 - **Scope** (depends on mode):
   - pilot: which project? which thread (if a specific one)?
