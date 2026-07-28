@@ -20,6 +20,56 @@ _None. No session holds the designer lock; no pilot scope is owned._
 
 ## recently_closed
 
+### session_id: 2026-07-28-consolidate-one-tree
+- mode_at_close: designer                 # designer lock RELEASED at close — now free
+- scope: |
+    Second maintenance pass, same day. Consolidate to a single working
+    tree, seed the remaining clusters, and correct two wrong claims the
+    earlier pass wrote into canon.
+- closed: 2026-07-28T00:00Z
+- summary: |
+    (1) CORRECTIONS to my own earlier canon edits, both wrong:
+        - "a cloud session cannot add folders mid-session" — false. Erik
+          added SIMULATIONS/ and cluster-mounts/cmmg/ mid-session with
+          "Add folder" and both became visible immediately. Step 0(c) and
+          the README now say so, and route a missing folder to "ask Erik
+          to add it" rather than "restart elsewhere".
+        - "identify the machine with hostname" — impossible. A Cowork
+          shell runs in an isolated Linux VM; `hostname` returns "claude".
+          Replaced by canon/local/.this-machine, a one-line per-machine
+          file excluded from overlay sync.
+    (2) ONE TREE. Erik chose public-repo-only over a private/public pair.
+        Diffed both trees: the sole unique content in the old LLM-LMPS was
+        cluster-lammps-info.txt and lammps_250722_config.txt, now in
+        canon/local/reference/. Everything else was scrubbing or stale.
+        Old tree moved to DEVEL/_to_delete/ with a README explaining what
+        was checked (incl. a 4.6 MB Claude data export left for Erik).
+    (3) clusters.yaml: raven, viper-gpu and viper-cpu seeded from the
+        LAMMPS-compile-n-bench repo — hardware, module stacks, Kokkos
+        backend/arch, binaries, docs URLs, scratch patterns. Plus three
+        cross-cluster hard rules (never install into $HOME; MPI only
+        inside a Slurm job; scratch is not backed up).
+    (4) New reference card canon/tools/lammps-compile-n-bench.card.yaml
+        + catalog entry: the build recipes and measured benchmarks are
+        that repo's job, canon just points at it.
+    (5) canon/local/ is now its own private git repo (6 files) so the
+        overlay is versioned and syncable. Facts confirmed by Erik:
+        notify address is the fau.de one; the cmmg <SCRATCH_ALIAS> path is
+        a symlink to the ptmp scratch (same place, two names), which
+        resolves the apparent conflict. Real values: canon/local/.
+- handoff_to: null
+- next_session_must: |
+    Two things are still open and both are one-liners:
+    (a) DEVEL/CLAUDE.md still says the tree is at ~/Desktop/DEVEL/ — it is
+        at ~/DEVEL/. Every agent reads that file first.
+    (b) 16 of the 18 projects under SIMULATIONS/ have no project.md, so
+        the framework will not touch them. Only Ni-A0-CIJ-EAM-MEAM
+        (succeeded) and Ni-H-PHASE-DIAGRAM-EAM-MEAM are ingested. Ingest
+        on demand, one at a time, per the ARCHITECTURE ingestion rule.
+    Also unfiled: SCIENCE-KICKOFF-NIH-STOICHIOMETRY.md sits loose at the
+    SIMULATIONS/ root (modified 2026-07-28) with no session covering it.
+    It probably belongs inside Ni-H-PHASE-DIAGRAM-EAM-MEAM.
+
 ### session_id: 2026-07-28-cowork-compat-maintenance
 - mode_at_close: designer                 # designer lock RELEASED at close — now free
 - scope: |

@@ -1,31 +1,57 @@
 # canon/local/clusters.local.yaml — real identity for canon/clusters.yaml.
-# NEVER COMMITTED. Supplies the substitutions for the placeholders in the
-# public canon/clusters.yaml; that file keeps the structure (partitions,
-# modules, sshfs options, scratch policy).
+# NEVER COMMITTED to the public repo (canon/local/ is gitignored there).
+# Version-controlled separately in the private overlay repo.
 
 updated: 2026-01-01
 
-notify_email: <NOTIFY_EMAIL>       # slurm --mail-user
+notify_email: <NOTIFY_EMAIL>      # your Slurm --mail-user
 
 clusters:
   cmmg:
     ssh:
       user: <CLUSTER_USER>
-      host: <CLUSTER_HOST>
-    # Scratch. NEVER install or download into cluster $HOME (tight quota):
-    # venvs, pip/conda caches, TF + nvidia-cu12 wheels, model caches and
-    # build trees all go under scratch. Set PIP_CACHE_DIR, TMPDIR and any
-    # model cache var to a path under `scratch`, and use pip --no-cache-dir.
-    scratch: <CMMG_SCRATCH>        # e.g. /u/<CLUSTER_USER>/PTMP
+      host: <CMMG_HOST>
+      # ALWAYS give the user explicitly (`ssh <CLUSTER_USER>@host`) — L21.
+    scratch: /<CMMG_SCRATCH>
+    # <CMMG_SCRATCH_ALIAS> is a SYMLINK to /<CMMG_SCRATCH> — same place,
+    # two names. Confirmed by Erik 2026-07-28. Either path works; the
+    # sshfs mount uses /<CMMG_SCRATCH>. This resolves the apparent
+    # conflict with the DEVEL/CLAUDE.md note.
+    scratch_alias: <CMMG_SCRATCH_ALIAS>
+    mount_local:  /Users/<MAC_USER>/cluster-mounts/cmmg
+    potentials:   /<CMMG_SCRATCH>/POTENTIALS
+    home:         /u/<CLUSTER_USER>           # tight quota; dotfiles/config ONLY
+
   raven:
     ssh:
       user: <CLUSTER_USER>
       host: <RAVEN_HOST>
-    scratch: <RAVEN_SCRATCH>       # e.g. /ptmp/<CLUSTER_USER>
+    scratch: /ptmp/<CLUSTER_USER>             # confirmed 2026-07-01
     # NB: the $PTMP env var on raven points at the cmmc scratch — wrong
-    # host. Always use the value above, never $PTMP.
-  viper:
+    # machine. Use /ptmp/$USER literally, never $PTMP.
+    home: /u/<CLUSTER_USER>
+    jupyter: "SSH tunnel script: remote port 30000 -> local 8001"
+
+  viper-cpu:
     ssh:
       user: <CLUSTER_USER>
-      host: <VIPER_HOST>
-    scratch: <VIPER_SCRATCH>
+      host: <VIPER_CPU_HOST>                      # ssh shortname
+    scratch: /viper/ptmp1/<CLUSTER_USER>
+    home: /u/<CLUSTER_USER>
+
+  viper-gpu:
+    ssh:
+      user: <CLUSTER_USER>
+      host: <VIPER_GPU_HOST>                   # ssh shortname; separate cluster
+    scratch: /viper/ptmp2/<CLUSTER_USER>
+    home: /u/<CLUSTER_USER>
+
+# Reference material too machine-specific / too personal for the public
+# repo lives in canon/local/reference/ :
+#   cluster-lammps-info-legacy.txt   — older free-text cluster notes
+#                                      (contains a stale mac user path)
+#   lammps-250722-config-cmmg.txt    — full `lmp -h` config dump for the
+#                                      cmmg lammps/250722 module
+# The maintained, structured versions are canon/clusters.yaml (structure)
+# and the LAMMPS-compile-n-bench repo (build recipes + measured benchmarks,
+# see canon/tools/lammps-compile-n-bench.card.yaml).

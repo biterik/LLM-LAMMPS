@@ -101,6 +101,106 @@ clusters:
       # filter rules so noise can't sneak in).
       - important_outputs_mirrored_to_mac
 
-  raven:        { status: not-seeded }    # MPCDF; CPU+GPU; fortnightly downtimes
-  viper:        { status: not-seeded }    # MPCDF; GPU only; fortnightly downtimes
+  # ---------------------------------------------------------------------
+  # Seeded 2026-07-28 from the LAMMPS-compile-n-bench repo (see
+  # canon/tools/lammps-compile-n-bench.card.yaml), which holds the verified
+  # build recipes, module stacks and benchmark numbers for these machines.
+  # Structure only — real user/host/scratch come from
+  # canon/local/clusters.local.yaml.
+  # ---------------------------------------------------------------------
+
+  raven:
+    site: MPCDF
+    ssh:
+      user: <CLUSTER_USER>
+      host: <RAVEN_HOST>
+    paths:
+      ptmp: /ptmp/<CLUSTER_USER>
+      # WARNING: the $PTMP environment variable on raven points at the cmmc
+      # scratch (a DIFFERENT machine) and is wrong here. Always use
+      # /ptmp/$USER literally; never trust $PTMP on raven. Confirmed 2026-07-01.
+      home: /u/<CLUSTER_USER>            # tight quota; dotfiles/config ONLY
+    queue: slurm
+    gpu: true
+    hardware:
+      gpu_nodes: "4x NVIDIA A100 40GB SXM (NVLink), Ampere"
+      cpu_nodes: "2x Intel Xeon IceLake-SP Platinum 8360Y, 72 cores, AVX-512"
+    modules:
+      # Verified in build-lammps-raven.sh / build-lammps-raven-cpu.sh
+      gpu_build: [gcc/13, cuda/12.6, openmpi_gpu/5.0, cmake]
+      cpu_build: [mkl/2025.2]             # + icpx (oneAPI); gcc/13 pinned via
+                                          # --gcc-toolchain for C++17 <filesystem>
+      kokkos: { backend: CUDA, arch: AMPERE80, compiler: "nvcc_wrapper / g++13" }
+    binaries:
+      gpu: lmp_raven
+      cpu: lmp_raven_cpu
+    docs_url: "https://docs.mpcdf.mpg.de/doc/computing/raven-user-guide.html"
+    downtimes: { pattern: "~fortnightly" }
+
+  viper-gpu:
+    site: MPCDF
+    # ssh alias/shortname is machine-specific — see canon/local/clusters.local.yaml
+    ssh:
+      user: <CLUSTER_USER>
+      host: <VIPER_GPU_HOST>
+    paths:
+      ptmp: /viper/ptmp2/<CLUSTER_USER>   # GPU-side scratch
+      home: /u/<CLUSTER_USER>             # tight quota; dotfiles/config ONLY
+    queue: slurm
+    gpu: true
+    hardware:
+      note: "AMD Instinct MI300A APU (gfx942): 24 CPU cores + 1 GPU per APU,
+             128 GB shared HBM3, unified host/device memory."
+    modules:
+      build: [gcc/14, rocm/6.3, openmpi_gpu/5.0, cmake]
+      build_alt: [gcc/16, rocm/7.2, openmpi_gpu/5.0, cmake]
+      kokkos: { backend: HIP, arch: AMD_GFX942_APU, compiler: hipcc }
+    binaries: { gpu: lmp_viper }
+    docs_url: "https://docs.mpcdf.mpg.de/doc/computing/viper-gpu-user-guide.html"
+    downtimes: { pattern: "~fortnightly" }
+
+  viper-cpu:
+    site: MPCDF
+    aliases: [viper]
+    ssh:
+      user: <CLUSTER_USER>
+      host: <VIPER_CPU_HOST>
+    paths:
+      ptmp: /viper/ptmp1/<CLUSTER_USER>   # CPU-side scratch
+      home: /u/<CLUSTER_USER>             # tight quota; dotfiles/config ONLY
+    queue: slurm
+    gpu: false
+    hardware:
+      cpu_nodes: "2x AMD EPYC 9554 Genoa, 128 Zen4 cores/node"
+    modules:
+      kokkos: { backend: OpenMP, arch: ZEN4, compiler: "g++ (-march=znver4)" }
+    binaries: { cpu: lmp_viper_cpu }
+    docs_url: "https://docs.mpcdf.mpg.de/doc/computing/viper-user-guide.html"
+    downtimes: { pattern: "~fortnightly" }
+
   nhr_erlangen: { status: not-seeded }    # stability tbd
+
+# ---------------------------------------------------------------------
+# CROSS-CLUSTER HARD RULES (apply to every entry above)
+#
+# 1. NEVER install or download into cluster $HOME — quotas are tight and
+#    pip/conda venvs, TensorFlow + nvidia-cu12 wheels, ML-potential model
+#    caches and build trees are multi-GB. They WILL blow it ("Disk quota
+#    exceeded" on cmmg, 2026-06-30, installing TF into ~/tf-cpu).
+#    Put everything under the cluster's ptmp/scratch and redirect caches:
+#    PIP_CACHE_DIR, TMPDIR and any model cache var point at scratch;
+#    create venvs under scratch; use `pip --no-cache-dir`.
+#    $HOME is for dotfiles and config only.
+#
+# 2. LAMMPS and any MPI code run ONLY inside a Slurm job, never on a login
+#    node. The builds here are MPI-linked and abort in MPI_Init ->
+#    PMI2_Job_GetId on a login node. Always propose sbatch/srun. The only
+#    login-node exception is a non-simulation singleton smoke test such as
+#    `lmp -h`, and even then clear PMI first:
+#      unset I_MPI_PMI_LIBRARY; I_MPI_FABRICS=shm lmp -h
+#    Login nodes are for building, downloading and submitting.
+#
+# 3. Scratch is NOT backed up and can be wiped at any time. Anything
+#    expensive to regenerate gets mirrored (curated, compressed) to the
+#    backed-up Mac before a thread is closed. See ARCHITECTURE.md §4.
+# ---------------------------------------------------------------------

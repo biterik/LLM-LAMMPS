@@ -29,38 +29,54 @@ their data live in a separate **simulation folder**, whose location is
 ### 0. Environment + local-config check (added 2026-07-28)
 
 Before anything else, establish that this session can actually do the
-work. Three checks, in order — all cheap, and each one has cost a
-session before:
+work. Three checks, in order — all cheap, and each one has cost a session
+before.
 
-**(a) Which machine?** Read `canon/local/local.yaml` and match `hostname`
-against its `machines:` map. Never assume a path resolves; M5, M2, the
-travel laptop and the mini hold different things, and `has_simulations:
-false` machines must not be proposed as a mirror target.
+**(a) Which machine?** Read `canon/local/.this-machine` — a one-line file
+naming the machine (`M5`, `M2`, `M1`, `mini`), then look that key up in
+`canon/local/local.yaml`'s `machines:` map.
+
+Do **not** try to identify the machine by running `hostname`. A Cowork
+session's shell runs in an isolated Linux VM, not on macOS — `hostname`
+there returns the VM's name and tells you nothing about which Mac you are
+attached to. `.this-machine` is written once per machine by hand and is
+excluded from the private-overlay sync for exactly that reason. If it is
+missing, ASK which machine this is rather than guessing; `M1` (travel
+laptop) and `mini` hold no simulation data, and `has_simulations: false`
+machines must never be proposed as a mirror target.
 
 **(b) Does `canon/local/` exist?** If not, the repo is a fresh clone and
 every cluster user, host and scratch path is still a `<PLACEHOLDER>`.
 Stop and tell Erik:
 
 ```
+git clone <PRIVATE_OVERLAY_REPO> <REPO_ROOT>/canon/local
+# or, first machine only:
 cp -R <REPO_ROOT>/canon/local.example <REPO_ROOT>/canon/local
 ```
 
-...then fill in `local.yaml` and `clusters.local.yaml`. Framework
-(designer) work can proceed without it; **cluster or pilot work cannot**.
+Framework (designer) work can proceed without it; **cluster or pilot work
+cannot**.
 
 **(c) Can this session see the working set?** Try to list the simulation
-root and the cluster mount from `local.yaml`'s `roots:`. If they are not
-reachable, say so plainly and **do not improvise a substitute**.
+root and the cluster mount from `local.yaml`'s `roots:`. Both must be
+readable before any pilot work.
 
-The common cause: the session is running in the **cloud sandbox**, which
-sees only the folders connected when it started and cannot add more
-mid-session — so `SIMULATIONS/` and `cluster-mounts/` are invisible no
-matter what is typed. Framework/designer work on this repo is still fine
-there. Pilot work is not: tell Erik to start the task **on his computer**
-instead (desktop app → "Run this task" picker, top right, when starting a
-new Cowork task) with the simulation folder and the cluster mount
-connected. Do not silently narrow the scope to whatever happens to be
-visible — that is how a session writes a project file into the wrong tree.
+If either is missing, the usual cause is simply that the folder is **not
+connected to this session** — ask Erik to click **"Add folder"** in the
+desktop app and add it. Folders CAN be added at any point, including
+mid-session; they become visible immediately. This applies whether the
+session runs in the cloud or on his computer.
+
+If the cluster mount is connected but reads as *empty*, the sshfs mount
+itself is down — ask Erik to remount (`command_example` in
+`canon/clusters.yaml`) rather than concluding the data is gone. A flaky
+mount has twice been misread as data loss (2026-06-01); an unreliable
+source is not evidence of absence.
+
+Either way: say plainly what is missing and **do not improvise a
+substitute** or narrow the scope to whatever happens to be visible. That
+is how a session writes a project file into the wrong tree.
 
 ### 1. Read SESSIONS.md
 

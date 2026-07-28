@@ -132,10 +132,10 @@ leak into public history.
 # once, on the first machine
 cd <REPO_ROOT>/canon/local && git init && git add -A
 git commit -m "local identity overlay"
-gh repo create <you>/llm-lammps-local --private --source=. --push
+gh repo create __GH__/llm-lammps-local --private --source=. --push
 
 # on every other machine
-git clone git@github.com:<you>/llm-lammps-local.git <REPO_ROOT>/canon/local
+git clone git@github.com:__GH__/llm-lammps-local.git <REPO_ROOT>/canon/local
 ```
 
 Alternative (no second repo): keep the folder in iCloud Drive and symlink it in.
@@ -156,13 +156,14 @@ hostname, a real scratch path). Run it before every push; wire it as a
 
 ## Running a session
 
-Start the session where the work actually is. The framework needs to see three
-trees: this repo, the simulation folder, and the cluster mount. If a host only
-exposes folders chosen when the session started — Cowork's cloud sandbox, for
-instance, which cannot add folders mid-session — then only *framework* work is
-possible there; pilot work needs a session with the simulation folder and the
-mount connected. Step 0 of the ritual checks this and says so rather than
-improvising a substitute.
+The framework needs to see three trees: this repo, the simulation folder, and
+the cluster mount. In Claude Cowork, connect all three with **"Add folder"** —
+this works at any point, including mid-session, and applies equally to sessions
+running in the cloud and on your own machine. Mount the cluster over sshfs
+*before* connecting it, or the folder connects but reads as empty.
+
+Step 0 of the startup ritual verifies all three and says what is missing rather
+than improvising a substitute.
 
 The reference configuration targets an [MPCDF](https://www.mpcdf.mpg.de/)
 Slurm cluster; adapt `canon/clusters.yaml` to yours.

@@ -993,11 +993,12 @@ Every session, at startup, performs the ritual codified in
 `canon/session-startup.md`:
 
 0. Environment gate (added 2026-07-28): identify the machine from
-   `canon/local/local.yaml`; verify `canon/local/` exists at all; verify
-   the simulation root and cluster mount are actually reachable from
-   this session. A session that cannot see them (typically a cloud
-   sandbox, which cannot add folders mid-session) may do designer work
-   but must not do pilot work.
+   `canon/local/.this-machine` (NOT from `hostname` — a Cowork shell runs
+   in an isolated VM, not on macOS); verify `canon/local/` exists at all;
+   verify the simulation root and cluster mount are actually reachable.
+   A missing folder is usually just an unconnected one — ask Erik to add
+   it; a connected-but-empty mount means sshfs is down, not that data is
+   gone. Designer work may proceed without them; pilot work may not.
 
 1. Read `<REPO_ROOT>/SESSIONS.md` (active-sessions dashboard),
    resolved relative to this repo.
