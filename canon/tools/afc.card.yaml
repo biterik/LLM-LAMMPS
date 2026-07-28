@@ -29,7 +29,7 @@ outputs:       |
   One converted file (OUTPUT). Descriptive name preserving meaning.
 
 version:       git HEAD 99cc406 (2026-04-19)     # same repo as lego-tools
-last_verified: 2026-04-19 against repo ~/Desktop/DEVEL/LEGO-TOOLS (README "afc")
+last_verified: 2026-04-19 against repo <DEVEL_ROOT>/LEGO-TOOLS (README "afc")
 
 gotchas:       |
   - `-t` type map is REQUIRED when converting to CEL from a numeric-type

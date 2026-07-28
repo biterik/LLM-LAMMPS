@@ -8,14 +8,64 @@ LLM-LMPS Cowork session self-registers on startup, updates
 See ARCHITECTURE.md §17 (Concurrency model) for the rules and
 `canon/session-startup.md` for the startup ritual.
 
-last_index_updated: 2026-06-09T18:41Z
+last_index_updated: 2026-07-28T00:00Z
 
 ---
 
 ## active
 
+_None. No session holds the designer lock; no pilot scope is owned._
+
+---
+
+## recently_closed
+
+### session_id: 2026-07-28-cowork-compat-maintenance
+- mode_at_close: designer                 # designer lock RELEASED at close — now free
+- scope: |
+    Framework maintenance only, no pilot scope. Bring LLM-LMPS back in step
+    with the current Cowork (cloud-sandbox default, device-bridge folder
+    access, skills, persistent-memory MCP) after ~4 weeks dormant.
+- closed: 2026-07-28T00:00Z
+- summary: |
+    (1) Stale-closed the phantom 2026-06-09 active entry (above).
+    (2) Path drift: replaced the `~/Desktop/DEVEL/...` hardcodes in
+        ARCHITECTURE §17/§17.6 and canon/session-startup.md with
+        repo-relative resolution (the repo now lives at ~/DEVEL/).
+    (3) Retired the `auto-memory` layer: ~10 references across
+        ARCHITECTURE, session-startup, learnings, preferences and
+        proposals-inbox now point at canon/learnings.md. New
+        ARCHITECTURE §6.4 states the relationship to Cowork's own
+        persistent memory (framework rules live in canon; the personal
+        memory filesystem is not a framework store).
+    (4) New local-config layer: gitignored canon/local/ holding real
+        identity, with canon/local.example/ committed as the template,
+        loaded as an overlay on canon/clusters.yaml. New lint
+        canon/templates/lint-no-identity.py (bash wrapper alongside)
+        guards the scrub boundary; Python because macOS bash 3.2 + BSD
+        grep cannot run the shell version.
+    (5) New skills/llm-lammps/SKILL.md so the startup ritual self-triggers
+        on "simulations"/"LAMMPS"/"runs"; packaged as llm-lammps.skill.
+    Nothing touched on the cluster; no jobs in flight; no project files
+    written (this session could not see them — see next_session_must).
+- handoff_to: null
+- next_session_must: |
+    Run the session-startup ritual as usual. Two things to know:
+    (a) Run the session ON YOUR COMPUTER, not in the cloud sandbox — the
+        cloud sandbox can only see folders connected at session start and
+        cannot add more mid-session, so ~/Desktop/SIMULATIONS and
+        ~/cluster-mounts/ are invisible there. Connect the simulation
+        folder and the cluster mount at start.
+    (b) canon/local/ must exist before cluster work: copy
+        canon/local.example/ to canon/local/ and fill in the real values.
+        The ritual now checks for it at step 0.
+    Outstanding pilot work, free to claim: ingest EAM-DISLOCS-Ni-Cu
+    (Ni-Cu dislocation/segregation study) per the stale-closed entry above;
+    and the ni-h-phase-diagram-eam-meam project left at thread 01/02 by
+    session 2026-06-01-1704-Ni-hydride.
+
 ### session_id: 2026-06-09-1841-ingest-dislocs-ni-cu
-- mode: designer+pilot
+- mode_at_close: designer+pilot   # designer lock RELEASED
 - scope: |
     PILOT: ingest the existing (not-yet-ingested) sim-project
     ~/Desktop/SIMULATIONS/EAM-DISLOCS-Ni-Cu (Ni-Cu dislocation/segregation
@@ -25,70 +75,61 @@ last_index_updated: 2026-06-09T18:41Z
     nothing renames). DESIGNER: took the (free) lock to formalize a reusable
     ingestion procedure in canon if the existing ARCHITECTURE-only rule proves
     thin.
-- started: 2026-06-09T18:41Z
-- last_active: 2026-06-09T18:41Z
-- owns_writes_to:
-  - ~/Desktop/SIMULATIONS/EAM-DISLOCS-Ni-Cu/** (Mac archive — project.md stamp + thread stubs)
-  - ~/cluster-mounts/cmmg/DISLOCS-Ni-Cu/** (cluster, via mount)
-  - canon/** (designer lock held — ingestion-procedure canon, only if needed)
-- in_flight: <empty>
-- notes: |
+- closed: 2026-07-28T00:00Z          # stale-closed; last_active was 2026-06-09T18:41Z
+- summary: |
+    STALE-CLOSED, no work performed. Registered 2026-06-09 and never
+    advanced (last_active == started, in_flight empty, no files written).
+    Closed 2026-07-28 by the framework-maintenance session so the dashboard
+    stops showing a phantom pilot lock on the Ni-Cu dislocation project.
+    The ingestion of EAM-DISLOCS-Ni-Cu is still OUTSTANDING and free to
+    claim. Original notes follow.
+- original_notes: |
     Designer lock was FREE at startup (released by 2026-06-01-1525 at its
     16:05Z demotion). No pilot-scope collision: the lone other active session
     owns the Ni-A0-CIJ Thread-03 paths, disjoint from this project.
     Confirmed not-yet-ingested: no project.md at project root. howto_dislocs-
     Ni-Cu.txt present (Erik's own notes) — primary ingestion source.
+- handoff_to: null
+
+### session_id: 2026-06-30-1327-Ni-thread03-close
+- mode_at_close: pilot
+- scope: |
+    Ni-A0-CIJ-EAM-MEAM / 03_LATTICE-CONSTANT-AT-300K — completion: mirror the
+    finished production data cluster->Mac, run the analysis pipeline, close the
+    thread, and close the project.
+- closed: 2026-06-30T13:27Z
+- summary: |
+    Picked up the Thread-03 pilot tail left in_flight by 2026-06-01-1525.
+    The three production jobs (20317577 EAM-NPT, 20317578 MEAM-NPT, 20317579
+    MEAM-scan) had completed cleanly and survived in cmmg ptmp. Curated-mirrored
+    all four run dirs to the backed-up Mac (~203 MB), ran analyze-a300-NPT (x2),
+    analyze-a300-NVT-scan (x2), thermo-fft-check (x4), and
+    compare-a300-methods-potentials. Results: Pezold-EAM a(300K)=3.5369 A,
+    KoShimLee-MEAM a(300K)=3.5342 A, alpha~1.2e-5/K both; M1/M2 agree to ~1-2e-5 A
+    via the L24 quadratic root. Wrote two consolidated per-potential mile-pebbles,
+    closed thread.md (status succeeded, verdict), and closed project.md
+    (status succeeded, results table + lessons). Two "fix the class" analysis-
+    script fixes applied (numpy-2.x YAML representers in analyze-a300-NVT-scan.py;
+    duplicate phase-boundary-step de-dup in thermo-fft-check.py). One cosmetic
+    mislabel left in compare-a300-methods-potentials.py (noted in thread.md).
+- handoff_to: null
+- supersedes: 2026-06-01-1525-Ni-thread03 (completed that session's in_flight tail)
 
 ### session_id: 2026-06-01-1525-Ni-thread03
-- mode: pilot                             # DEMOTED from designer+pilot at 2026-06-01T16:05Z; designer lock RELEASED (framework backlog empty, only Thread-03 job-wait remains). Lock now free.
+- mode_at_close: pilot                    # designer lock already free (released at 16:05Z demotion)
 - scope: |
     Ni-A0-CIJ-EAM-MEAM / 03_LATTICE-CONSTANT-AT-300K (pilot: move the runs
     forward) + LLM-LMPS framework canon (designer: the two Thread-03 TODOs).
-- started: 2026-06-01T15:25Z
-- last_active: 2026-06-01T16:05Z
-- owns_writes_to:
-  - ~/Desktop/SIMULATIONS/Ni-A0-CIJ-EAM-MEAM/03_LATTICE-CONSTANT-AT-300K/** (Mac archive)
-  - /cmmc/ptmp/<CLUSTER_USER>/Ni-A0-CIJ-EAM-MEAM/03_LATTICE-CONSTANT-AT-300K/** (cluster, via mount)
-  # framework-canon line (.lmps/*, ARCHITECTURE.md, auto-memory) PRUNED
-  # 2026-06-01T15:57Z by session 2026-06-01-1557-ARCHITECTURE-designer:
-  # stale after this session's 16:05Z demotion to pilot + lock release.
-  # Canon now owned by the designer session.
-- in_flight: |
-    PRODUCTION SUBMITTED ~15:40Z: 20317577 (01 EAM-NPT, ~34min/1:30),
-    20317578 (02 MEAM-NPT, ~3.6h/6:00), 20317579 (04 MEAM-scan array 0-4,
-    ~2.6h/task / 4:00). Long pole 02 ~4h.
-    (Probes PASSED first: 20317574/75/76; $(step) fix confirmed; walltime
-    rescaled per L26 for the probe-ntasks=2 vs prod-ntasks=1 mismatch.)
-    NEXT when done: curated mirror cluster->Mac, then 4 analysis scripts
-    + FFT check, then close thread.
-    DESIGNER edits this session (Erik-requested): (1) §17.5 + concurrency
-    memory tightened — role tag on EVERY response, no exceptions; (2) new
-    "fix the class, not the instance" rule -> learnings.md Process +
-    feedback_fix_the_class_not_instance.md + MEMORY.md, lint already in
-    style/lammps.md §1.12; (3) created .lmps/templates/probe-input.in.skel
-    from the verified probes (closes that designer TODO).
-    DESIGNER TODO BACKLOG NOW EMPTY (both prior pending items done). Only
-    remaining work tied to this session is the Thread-03 pilot tail:
-    await jobs -> curated mirror -> 4 analysis scripts + FFT -> close.
-- notes: |
-    Designer lock taken (active was (none) at startup). UNBLOCKED:
-    got cluster ground truth via Erik's real cmmg shell — all run dirs +
-    staged probes exist, run 03 data real (sacct 20285982 all COMPLETED).
-    Mac mount re-verified healthy post-reboot.
-    Found + fixed a 4th, previously-unrecorded failed probe attempt (jobs
-    20286009/10/11): root cause `$(step:%d)` in the fix-print line (%d
-    invalid in $(...), values are doubles). Fixed `$(step:%d)`->`$(step)`
-    in the six 01/02/04 .in + .probe.in files. Codified as L31 (corrects
-    L30). thread.md updated.
-    NEXT: Erik resubmits the 3 probes -> verify clean -> rescale prod
-    --time per L26 -> submit production.
-    Designer TODOs still pending: probe-input.in.skel (build from a
-    VERIFIED-clean probe, so after probes pass); L30+L31 lint into
-    style/lammps.md §1.
-
----
-
-## recently_closed
+- closed: 2026-06-30T13:27Z                # retired by 2026-06-30 close session; its in_flight production tail is done
+- summary: |
+    Got cluster ground truth via Erik's real cmmg shell; found + fixed a 4th
+    failed probe attempt (`$(step:%d)`->`$(step)`, codified as L31). Probes
+    resubmitted and PASSED (20317574/75/76); production SUBMITTED
+    (20317577 EAM-NPT, 20317578 MEAM-NPT, 20317579 MEAM-scan). Left in_flight
+    awaiting those jobs. Designer TODO backlog cleared (probe-input.in.skel
+    built; §17.5/concurrency + fix-the-class rules tightened). The await->mirror
+    ->analyze->close tail was completed by session 2026-06-30-1327-Ni-thread03-close.
+- handoff_to: 2026-06-30-1327-Ni-thread03-close
 
 ### session_id: 2026-06-01-1704-Ni-hydride
 - mode_at_close: pilot                     # designer lock had already been released at the 17:32Z demotion; nothing to release at close

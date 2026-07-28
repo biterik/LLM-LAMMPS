@@ -1,0 +1,41 @@
+# canon/local/local.yaml — machine map and local roots. NEVER COMMITTED.
+# Copy from canon/local.example/, fill in, keep in step across machines
+# (see canon/local.example/README.md).
+
+updated: 2026-01-01            # bump when you edit; helps spot a stale sync
+
+mac_user: <MAC_USER>
+
+# Which machine am I on? The pilot checks `hostname` against these at
+# startup, so a path is never assumed to exist on the wrong machine.
+machines:
+  M5:
+    hostname: <M5_HOSTNAME>
+    role: office workstation; heavy compute; drives cluster jobs
+    has_simulations: true
+  M2:
+    hostname: <M2_HOSTNAME>
+    role: primary trusted daily driver
+    has_simulations: true
+  M1:
+    hostname: <M1_HOSTNAME>
+    role: disposable travel laptop — no personal data, code + SSH only
+    has_simulations: false     # never mirror simulation data here
+  mac-mini:
+    hostname: <MINI_HOSTNAME>
+    role: always-on agent host over Tailscale
+    has_simulations: false
+
+# Local roots. Absolute paths, per the "no relative paths" preference.
+# <DEVEL_ROOT> and <REPO_ROOT> in canon/ resolve from here.
+roots:
+  devel:        /Users/<MAC_USER>/DEVEL
+  repo:         /Users/<MAC_USER>/DEVEL/LLM-LAMMPS-public
+  simulations:  /Users/<MAC_USER>/Desktop/SIMULATIONS   # LLM-LMPS writes here
+  projects:     /Users/<MAC_USER>/Desktop/PROJECTS      # admin; read-only
+  mounts:       /Users/<MAC_USER>/cluster-mounts        # sshfs mountpoints
+  bin:          /Users/<MAC_USER>/bin                   # tool-card exec.mac
+
+# The simulation folder is STILL asked for every session (session-startup
+# step 2). This is the default offered, not a substitute for asking.
+default_simulation_root: /Users/<MAC_USER>/Desktop/SIMULATIONS

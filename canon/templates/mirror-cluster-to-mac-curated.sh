@@ -65,4 +65,4 @@ echo
 echo "Curated mirror complete."
 echo "Reminder: structure files (.data, .data.zst, .dump) need explicit"
 echo "ASK-and-cp with zstd -19 compression — they are NOT mirrored by"
-echo "this helper. See feedback_write_via_cluster_mount.md."
+echo "this helper. See canon/learnings.md (Cluster discipline)."

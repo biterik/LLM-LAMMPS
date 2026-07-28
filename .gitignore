@@ -22,3 +22,7 @@ __pycache__/
 *.data
 *.lammpstrj
 log.lammps
+
+# Local identity overlay — real cluster users/hosts/emails/home paths.
+# NEVER COMMITTED. Template lives in canon/local.example/ instead.
+canon/local/

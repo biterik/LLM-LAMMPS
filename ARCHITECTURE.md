@@ -14,7 +14,7 @@
 - **Where state lives** at runtime:
   - `~/Desktop/PROJECTS/<admin-project>/` — admin / institutional projects, owned by Erik or by the email helper. LLM-LMPS reads, never writes.
   - `~/Desktop/SIMULATIONS/<sim-project>/` — simulation projects, owned by LLM-LMPS. Also holds legacy not-yet-ingested folders.
-  - `canon/` — global pilot state (preferences, lessons, learnings, vocab, clusters, calibration, style guides, templates, **tool cards**). One canon shared across all projects; lives at `~/Desktop/DEVEL/LLM-LMPS/canon/` as a **visible** folder (renamed from the former hidden `.lmps/` on 2026-06-01 — see §6).
+  - `canon/` — global pilot state (preferences, lessons, learnings, vocab, clusters, calibration, style guides, templates, **tool cards**). One canon shared across all projects; lives at `<REPO_ROOT>/canon/` as a **visible** folder (renamed from the former hidden `.lmps/` on 2026-06-01 — see §6).
   - `~/cluster-mounts/<cluster>/` — sshfs-mount of user's ptmp on each cluster.
 - **Open items deferred to walk-through:** end of document.
 
@@ -62,7 +62,7 @@ A feature for this tool earns its keep if it touches (1)–(3); (4) and (5) are 
 
 ## 2. The five hard rules
 
-These are non-negotiable. They are also in auto-memory and apply session-to-session.
+These are non-negotiable. They also live in `canon/learnings.md` and apply session-to-session.
 
 1. **The LLM owns the write channel.** Erik never types into project files — not project.md, not thread.md, not scripts, not anything. He speaks in chat; the pilot transcribes. He can read files anytime. Reactions like "atoms overlapped, try Anderson-Cottrell" get woven into thread.md by the pilot, not pasted in by Erik.
 2. **Descriptive file names always.** No `dump.out`, no `run1/`, no `restart.data`. Every file gets a descriptive name. Pilot picks; Erik shouldn't have to nag.
@@ -381,7 +381,7 @@ potential:
 
 All written exclusively by the pilot. All readable by Erik anytime. Lives on Mac, shared across all projects.
 
-> **Location (decided 2026-06-01):** canon lives at `~/Desktop/DEVEL/LLM-LMPS/canon/` as a **visible** folder. It was formerly the hidden `.lmps/` dotfolder with a planned promotion to `~/.lmps/` (home); that plan was dropped — hiding the most-read-at-runtime material fought hard rule 1's "Erik reads files anytime", and a home-global path bought nothing with a single machine. The design/meta docs (this file, SESSIONS.md, brainstorm-notes.md) stay at the repo top level; the design-vs-canon boundary is now a visible sub-folder split, not hidden-vs-visible. The sibling `examples/` dump stays at `~/Desktop/DEVEL/LLM-LMPS/examples/`.
+> **Location (decided 2026-06-01; path made repo-relative 2026-07-28):** canon lives at `<REPO_ROOT>/canon/` as a **visible** folder. `<REPO_ROOT>` means *the root of this framework repo, resolved from wherever it is checked out* — never a hardcoded absolute path; it was `~/Desktop/DEVEL/LLM-LMPS/` in 2026-05/06 and the tree has since moved. It was formerly the hidden `.lmps/` dotfolder with a planned promotion to `~/.lmps/` (home); that plan was dropped — hiding the most-read-at-runtime material fought hard rule 1's "Erik reads files anytime", and a home-global path bought nothing with a single machine. The design/meta docs (this file, SESSIONS.md, brainstorm-notes.md) stay at the repo top level; the design-vs-canon boundary is now a visible sub-folder split, not hidden-vs-visible. The sibling `examples/` dump stays at `<REPO_ROOT>/examples/`.
 
 ```
 canon/
@@ -606,6 +606,39 @@ External programs and promoted-internal utilities the pilot invokes instead of h
 **Version drift.** External tools keep evolving, so a card carries `last_verified: <date> against version X`. Cards don't reproduce the tool's manual — they capture the contract the pilot needs and point at `--help`. When a card looks stale, the pilot re-probes (`tool --version` / `--help`) and re-stamps. Gotchas accrue on the card like `lessons.md` entries.
 
 **Deferred:** MCP-wrapping of tools — against the lazy ethos; CLIs through the bridge are enough. Revisit only if a tool genuinely needs structured request/response the shell can't carry.
+
+### local/ — the identity overlay (added 2026-07-28, gitignored)
+
+This repo is public and **scrubbed**: cluster usernames, hostnames, notification addresses and Mac home paths appear only as placeholders (`<CLUSTER_USER>`, `<CLUSTER_HOST>`, `<NOTIFY_EMAIL>`, `<MAC_USER>`, `<DEVEL_ROOT>`, `<REPO_ROOT>`). The real values live in `canon/local/`, which is `.gitignore`d; `canon/local.example/` is the committed template.
+
+```
+canon/local/                    # gitignored — never committed
+├── local.yaml                  # machine map (M5/M2/M1/mini) + local roots
+└── clusters.local.yaml         # real ssh user/host/scratch per cluster + notify email
+canon/local.example/            # committed template + setup and sync instructions
+```
+
+**Split of duty.** `canon/clusters.yaml` keeps the *structure* — partitions, modules, sshfs options, scratch policy, the lessons baked into them. `canon/local/clusters.local.yaml` supplies only the *substitutions*. The pilot reads both and resolves placeholders before writing any submit script, sshfs command or path into a project file. Nothing about how the cluster works needs to leave the public file, and nothing identifying needs to enter it.
+
+**Machine awareness.** `local.yaml`'s `machines:` map lets the pilot answer "which Mac am I on?" from `hostname` before assuming a path resolves. `has_simulations: false` on the travel laptop is what stops a pilot from proposing a mirror onto a machine that must stay wipeable.
+
+**The overlay does not replace asking.** `default_simulation_root` is the default the ritual *offers*; step 2 still asks Erik for the simulation folder every session (§17.4).
+
+**Guard.** `canon/templates/lint-no-identity.py` fails if any tracked file contains a value from `canon/local/` or matches a generic identity pattern (email, `/Users/<name>`, `ssh user@host`, MPCDF hostname, real scratch path). Run it before every push.
+
+**Two-machine sync.** `canon/local/` is a few kB of text that must agree on M5 and M2. Preferred mechanism: a **private git repo** cloned into `canon/local/` — consistent with "code: GitHub is authoritative", and invisible to the parent repo because the path is gitignored. Alternative: an iCloud Drive folder symlinked in (config-sized, so it does not violate "keep research data out of iCloud"), at the cost of no history and occasional staleness. See `canon/local.example/README.md`.
+
+### Relationship to the host LLM's own memory (revised 2026-07-28)
+
+Earlier versions of this framework wrote durable behavioural rules into a host-provided "auto-memory" store (`MEMORY.md` + `feedback_*.md` files) *in addition to* canon. That layer is **retired**. All ~10 references have been repointed at `canon/learnings.md`.
+
+Reasons, in order of weight:
+
+1. **Hard rule 5.** A host-owned memory store is not a plain file in this repo. It cannot be diffed, reviewed, linted or carried to another LLM — the exact dependency hard rule 5 exists to prevent.
+2. **It duplicated canon.** Every auto-memory entry had a canon twin, so the two could drift, and the drift is invisible until a session follows the wrong copy.
+3. **The host's memory changed shape.** Cowork's persistent memory is now a *personal* store, shared across all of Erik's sessions and surfaces — not a per-project one. Framework rules do not belong in it.
+
+**The boundary, stated once:** anything that is true about *the framework* or *a project* goes in canon or in the project's own files. The host's personal memory may hold cross-cutting facts about Erik (his conventions, his clusters, how he likes output) and the framework neither writes to it nor depends on it. A session that has such memory will read it and will be slightly better calibrated; a session that does not must behave identically after reading canon. **Canon is sufficient on its own — that is the test.**
 
 ## 7. The three-script pattern
 
@@ -892,9 +925,9 @@ canon/
 ## 17. Concurrency model: pilot/designer modes, dashboard, inbox
 
 Erik works on multiple projects in parallel. Sessions of LLM-LMPS — each
-in its own Cowork window — may all see the same `~/Desktop/DEVEL/LLM-LMPS/`
+in its own Cowork window — may all see the same `<REPO_ROOT>/`
 and the same project archives. Without coordination, two sessions can
-race on the framework canon (`canon/`, ARCHITECTURE.md, auto-memory) or
+race on the framework canon (`canon/`, ARCHITECTURE.md) or
 on per-thread files inside one project.
 
 Set 2026-05-31 during Thread 03 of `ni-a0-cij-eam-meam`, after Erik
@@ -906,15 +939,15 @@ Every session is in one of three modes, declared at startup:
 
 - **pilot** — works on ONE project, possibly one thread of it. Writes
   ONLY to that project's files (Mac archive + cluster mount). Reads
-  framework canon (`canon/*`, ARCHITECTURE.md) and auto-memory, but
-  does NOT write to them. If a pilot session surfaces a new rule
+  framework canon (`canon/*`, ARCHITECTURE.md) but does NOT write to
+  it. If a pilot session surfaces a new rule
   during its work, it appends a *proposal* to
   `canon/proposals-inbox.md` rather than editing canonical files
   directly.
 
 - **designer** — works on framework canon. No project context.
-  Writes to `canon/*`, ARCHITECTURE.md, auto-memory (MEMORY.md +
-  memory files). Reviews and merges proposals from the inbox.
+  Writes to `canon/*` and ARCHITECTURE.md. Reviews and merges
+  proposals from the inbox.
 
 - **designer+pilot** (mixed) — concrete project work that ALSO
   produces framework changes (this is what most of the early
@@ -935,10 +968,11 @@ Every session is in one of three modes, declared at startup:
   two pilots on different projects is fully fine.
 - **Framework canon writes**: only the designer (or designer+pilot)
   session. Pilots are read-only here.
-- **Auto-memory writes**: memory files are uniquely named per
-  memory, so no overlap. `MEMORY.md` (the index) should be updated
-  only by the designer; pilots that write a memory file route the
-  index update through a proposal.
+- **Behavioural-rule writes**: durable behavioural rules live in
+  `canon/learnings.md` and are written only by the designer; a pilot
+  that surfaces one routes it through `canon/proposals-inbox.md`.
+  (Retired 2026-07-28: these used to live in a separate host-provided
+  "auto-memory" store. See §6.4.)
 
 ### 17.3 Mode transitions
 
@@ -955,11 +989,18 @@ Every session is in one of three modes, declared at startup:
 
 ### 17.4 Session-startup ritual
 
-Every session, at startup, performs the six-step ritual codified in
+Every session, at startup, performs the ritual codified in
 `canon/session-startup.md`:
 
-1. Read `~/Desktop/DEVEL/LLM-LMPS/SESSIONS.md` (active-sessions
-   dashboard).
+0. Environment gate (added 2026-07-28): identify the machine from
+   `canon/local/local.yaml`; verify `canon/local/` exists at all; verify
+   the simulation root and cluster mount are actually reachable from
+   this session. A session that cannot see them (typically a cloud
+   sandbox, which cannot add folders mid-session) may do designer work
+   but must not do pilot work.
+
+1. Read `<REPO_ROOT>/SESSIONS.md` (active-sessions dashboard),
+   resolved relative to this repo.
 2. Ask Erik (via `AskUserQuestion` or chat) the mode and the scope.
 3. Cross-check against the dashboard:
    - pilot on a scope already owned → warn and ask whether to take
@@ -998,7 +1039,7 @@ error; the next response self-corrects and notes the miss.
 
 **The hat follows the work, deterministically:**
 - touches project / cluster / science / thread files → `**[Pilot]**`
-- touches framework canon / tool cards / ARCHITECTURE / auto-memory →
+- touches framework canon / tool cards / ARCHITECTURE →
   `**[Designer]**`
 
 **One response = one hat (hard).** If a single request needs both, do the
@@ -1029,14 +1070,14 @@ silent:**
 Enforcement note: the original failure was *not* a dropped tag — the
 canon itself sanctioned `[Designer+Pilot]`, so the agent followed canon <!-- lint-ok:role-tag -->
 that disagreed with Erik's intent (2026-06-01 Ni-hydride session). The
-durable levers are: this section, the auto-memory copy
-([[feedback-concurrency-model]]) which loads every session start, and the
+durable levers are: this section, the copy in `canon/learnings.md`
+(read at every session start via the startup ritual), and the
 greppable lint `canon/templates/lint-role-tag.sh` that flags any canon
 file re-introducing the bracketed combined tag.
 
 ### 17.6 Dashboard schema (SESSIONS.md)
 
-Top-level file `~/Desktop/DEVEL/LLM-LMPS/SESSIONS.md` carries one
+Top-level file `<REPO_ROOT>/SESSIONS.md` carries one
 entry per active session and a `recently_closed` tail for browsing.
 Schema example in `canon/session-startup.md`. Key fields per entry:
 `session_id`, `mode`, `scope`, `started`, `last_active`,
@@ -1061,7 +1102,7 @@ designer session ever assigns L-numbers.
 
 ### 17.8 Per-thread checkpoint instead of global CHECKPOINT.md
 
-The previous CHECKPOINT.md at `~/Desktop/DEVEL/LLM-LMPS/CHECKPOINT.md`
+The previous CHECKPOINT.md at `<REPO_ROOT>/CHECKPOINT.md`
 served as the "read me first when joining cold" entry point. With
 parallel sessions, a single global checkpoint becomes a contention
 point.

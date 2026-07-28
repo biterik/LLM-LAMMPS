@@ -25,9 +25,18 @@ new entries, Erik confirms.
   proactivity. (2026-06-01 Ni-hydride: Erik flagged the Pilot dumping
   stoichiometry/potential/lattice options + three questions on a
   "start with the science" opener. Behavioral rule — not greppable, so
-  no lint; lives here + [[feedback-pilot-wait-and-codevelop]] in
-  auto-memory.)
+  no lint; lives here.)
 - Plain files only. YAML, markdown, JSON, parquet. No databases.
+
+- **Local tooling runs on every Mac, or it is not a guard.** macOS ships
+  bash 3.2 and BSD grep: no `grep -P`, no `grep -o` with PCRE, and `case`
+  inside `$(...)` misparses. The shell style guide governs *cluster*
+  scripts, where the interpreter is known and modern. Anything meant to
+  run on Erik's Macs (lints, pre-push hooks, local helpers) is written in
+  Python 3 with stdlib only, and is actually executed once on a Mac before
+  it counts as working. (2026-07-28: lint-no-identity.sh passed on Linux
+  and died on Erik's shell with a syntax error; rewritten as .py with a
+  wrapper.)
 
 ## Workflow rules
 
@@ -308,8 +317,7 @@ lesson:
      Longest path dominates: NPT-MEAM (~3.3 h after the job starts).
      Come back around HH:MM (assuming ~0 queue delay on s.cmmg)."
 
-  See [[feedback-runtime-estimates-and-pre-submit-summary]] in
-  auto-memory.
+  (Rule surfaced 2026-05-31 Thread 03.)
 
 - Don't ask about deadlines unprompted (it adds pressure).
 - Don't reframe LLM-LMPS as RDM or as a workflow tool.
@@ -317,7 +325,7 @@ lesson:
   `**[Designer]**`.** The combined `[Designer+Pilot]` tag is BANNED from <!-- lint-ok:role-tag -->
   responses; `designer+pilot` is only a SESSIONS.md capability (= "may do
   both"), never a response tag. The hat follows the work (project/cluster
-  → Pilot; canon/ARCHITECTURE/tool-cards/auto-memory → Designer). One
+  → Pilot; canon/ARCHITECTURE/tool-cards → Designer). One
   response = one hat: if a turn needs both, do the dominant part, tag it,
   and queue the other for a switch — never blend them. Announce every
   switch on its own line under the tag (`↳ switched Pilot→Designer: …`).
@@ -341,7 +349,7 @@ lesson:
 - **The Cowork task list is not durable storage.** Task entries evaporate
   between conversations. When a lesson, decision, or design note surfaces,
   write it to its destination plain file (`canon/lessons.md`,
-  `canon/style/*.md`, `ARCHITECTURE.md`, `thread.md`, or auto-memory) at
+  `canon/style/*.md`, `ARCHITECTURE.md`, or `thread.md`) at
   the moment it surfaces — never park it in a task list with a "drain
   later" plan. Incident: 2026-05-29 → ~7 of 21 walk lessons lost between
   sessions because they were only in task #9.

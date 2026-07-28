@@ -221,8 +221,8 @@ suggests:
 
 ...the precision per column is part of the proposal, not something
 the user has to elicit. This is parallel to the runtime-estimate
-rule (`feedback_runtime_estimates_and_pre_submit_summary.md` in
-auto-memory): metadata that downstream consumers need belongs with
+rule in `canon/learnings.md` ("Workflow rules"): metadata that
+downstream consumers need belongs with
 the design, not in a follow-up. Surfaced 2026-05-31 Thread 03.
 
 ## Plot defaults

@@ -34,7 +34,7 @@ outputs:       |
   Use a descriptive name (hard rule 2), e.g. Ni-fcc-111-50A.lammps .
 
 version:       LEGO 2.x rewrite (2026); git HEAD c4f5667 (2026-06-01)
-last_verified: 2026-06-01 against repo ~/Desktop/DEVEL/LEGO (README + `lego` no-arg help)
+last_verified: 2026-06-01 against repo <DEVEL_ROOT>/LEGO (README + `lego` no-arg help)
 
 gotchas:       |
   - macOS Apple Clang has no OpenMP → single-threaded counting pass; for

@@ -1,7 +1,8 @@
 # LLM-LMPS - Session-startup ritual
 
 Every Cowork session, on first interaction with Erik, runs through the
-following ritual before doing any project or framework work. The
+following ritual before doing any project or framework work. Step 0 is
+the environment gate; steps 1-6 are the original ritual. The
 canonical concurrency rules and rationale are in ARCHITECTURE.md §17.
 
 ## This framework is the entry point for "simulations"
@@ -9,7 +10,7 @@ canonical concurrency rules and rationale are in ARCHITECTURE.md §17.
 When Erik refers to **"simulations"**, **"LAMMPS"**, **"runs"**, or
 asks about which simulation projects are open/active, this framework is
 the entry point — engage it and run the ritual below. Do **not** browse
-`~/Desktop/DEVEL/` (or any other tree) to guess at simulation state.
+the `DEVEL/` tree (or any other tree) to guess at simulation state.
 `DEVEL/` holds the *framework code* (this repo) and assorted tooling;
 it is **not** where the simulations live. The simulation projects and
 their data live in a separate **simulation folder**, whose location is
@@ -23,13 +24,50 @@ their data live in a separate **simulation folder**, whose location is
   that would promote the session to designer+pilot). Re-run steps 3-5
   to reconfirm mode + scope + ownership.
 
-## The six steps
+## The steps
+
+### 0. Environment + local-config check (added 2026-07-28)
+
+Before anything else, establish that this session can actually do the
+work. Three checks, in order — all cheap, and each one has cost a
+session before:
+
+**(a) Which machine?** Read `canon/local/local.yaml` and match `hostname`
+against its `machines:` map. Never assume a path resolves; M5, M2, the
+travel laptop and the mini hold different things, and `has_simulations:
+false` machines must not be proposed as a mirror target.
+
+**(b) Does `canon/local/` exist?** If not, the repo is a fresh clone and
+every cluster user, host and scratch path is still a `<PLACEHOLDER>`.
+Stop and tell Erik:
+
+```
+cp -R <REPO_ROOT>/canon/local.example <REPO_ROOT>/canon/local
+```
+
+...then fill in `local.yaml` and `clusters.local.yaml`. Framework
+(designer) work can proceed without it; **cluster or pilot work cannot**.
+
+**(c) Can this session see the working set?** Try to list the simulation
+root and the cluster mount from `local.yaml`'s `roots:`. If they are not
+reachable, say so plainly and **do not improvise a substitute**.
+
+The common cause: the session is running in the **cloud sandbox**, which
+sees only the folders connected when it started and cannot add more
+mid-session — so `SIMULATIONS/` and `cluster-mounts/` are invisible no
+matter what is typed. Framework/designer work on this repo is still fine
+there. Pilot work is not: tell Erik to start the task **on his computer**
+instead (desktop app → "Run this task" picker, top right, when starting a
+new Cowork task) with the simulation folder and the cluster mount
+connected. Do not silently narrow the scope to whatever happens to be
+visible — that is how a session writes a project file into the wrong tree.
 
 ### 1. Read SESSIONS.md
 
-Open the framework repo's `SESSIONS.md` (at the root of this project —
-currently `~/Desktop/DEVEL/LLM-LAMMPS-public/SESSIONS.md`; resolve it
-relative to the repo, not a hardcoded path) and parse the `active`
+Open the framework repo's `SESSIONS.md` (at `<REPO_ROOT>/SESSIONS.md`).
+**Resolve it relative to the repo you are reading this file from** — never
+from a remembered absolute path. The tree has moved before and will move
+again; a hardcoded `~/Desktop/...` is always a bug. Parse the `active`
 section. Note:
 
 - Which sessions are currently active and in what mode
@@ -51,7 +89,7 @@ chat to ask:
 - **Scope** (depends on mode):
   - pilot: which project? which thread (if a specific one)?
   - designer: which area of the framework (lessons.md, preferences,
-    ARCHITECTURE.md section, auto-memory, etc.)? — or "open" if
+    ARCHITECTURE.md section, etc.)? — or "open" if
     Erik wants to merge inbox proposals or do broad framework work
   - designer+pilot: both a project/thread (pilot scope) and a
     framework area (designer scope), if known up front
@@ -186,6 +224,7 @@ done for today") or the conversation is clearly complete:
   their existing SESSIONS.md entry; no retroactive ritual.
 - If SESSIONS.md doesn't exist yet (very fresh install), create it
   with the schema and proceed.
-- The auto-memory `feedback_concurrency_model.md` reminds future
-  sessions to run this ritual at startup, in case the session prompt
-  doesn't otherwise surface this file.
+- The packaged skill (`skills/llm-lammps/SKILL.md`) is what makes this
+  ritual self-triggering: it fires on "simulations", "LAMMPS", "runs",
+  or a project/thread mention and points the session here. If the skill
+  is not installed, the ritual depends on Erik naming the framework.

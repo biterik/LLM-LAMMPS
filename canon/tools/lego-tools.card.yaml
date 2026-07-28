@@ -49,7 +49,7 @@ subtools:      |
                 Ensure all atoms inside box: PBC-wrap, then expand if needed (never shrinks).
 
 version:       git HEAD 99cc406 (2026-04-19)
-last_verified: 2026-04-19 against repo ~/Desktop/DEVEL/LEGO-TOOLS (README "Tool Reference")
+last_verified: 2026-04-19 against repo <DEVEL_ROOT>/LEGO-TOOLS (README "Tool Reference")
 
 gotchas:       |
   - lego-pbc-wrap and lego-change-box are orthogonal-box only.

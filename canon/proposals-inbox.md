@@ -3,8 +3,8 @@
 Pilot sessions append proposals here when they surface a new rule,
 preference, lesson, or feedback memory during their work. The designer
 session reviews this file in batches, merges into the canonical target
-file (`canon/lessons.md`, `canon/preferences.md`, `canon/style/*.md`,
-`ARCHITECTURE.md`, or `auto-memory/<name>.md`), and marks the proposal
+file (`canon/lessons.md`, `canon/preferences.md`, `canon/learnings.md`,
+`canon/style/*.md`, or `ARCHITECTURE.md`), and marks the proposal
 `status: merged`.
 
 See ARCHITECTURE.md §17.7 (Proposal inbox) for the rationale and
@@ -21,7 +21,7 @@ to change `status` and add `Designer review notes` at merge time.
 proposal_id: <YYYY-MM-DD-HHMM-short-slug>
 session_id: <the proposing pilot session's id from SESSIONS.md>
 proposed_at: <ISO 8601 UTC>
-target_file: <e.g., canon/lessons.md, canon/preferences.md, canon/style/*.md, ARCHITECTURE.md, auto-memory/<name>.md>
+target_file: <e.g., canon/lessons.md, canon/preferences.md, canon/learnings.md, canon/style/*.md, ARCHITECTURE.md>
 target_section: <e.g., "Process" in learnings.md, "new lesson L<N>" for numbered lessons, "Output precision" in preferences.md>
 priority: routine                       # routine | urgent
 status: pending                         # pending | merged | rejected

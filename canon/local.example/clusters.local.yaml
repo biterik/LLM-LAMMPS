@@ -1,0 +1,31 @@
+# canon/local/clusters.local.yaml — real identity for canon/clusters.yaml.
+# NEVER COMMITTED. Supplies the substitutions for the placeholders in the
+# public canon/clusters.yaml; that file keeps the structure (partitions,
+# modules, sshfs options, scratch policy).
+
+updated: 2026-01-01
+
+notify_email: <NOTIFY_EMAIL>       # slurm --mail-user
+
+clusters:
+  cmmg:
+    ssh:
+      user: <CLUSTER_USER>
+      host: <CLUSTER_HOST>
+    # Scratch. NEVER install or download into cluster $HOME (tight quota):
+    # venvs, pip/conda caches, TF + nvidia-cu12 wheels, model caches and
+    # build trees all go under scratch. Set PIP_CACHE_DIR, TMPDIR and any
+    # model cache var to a path under `scratch`, and use pip --no-cache-dir.
+    scratch: <CMMG_SCRATCH>        # e.g. /u/<CLUSTER_USER>/PTMP
+  raven:
+    ssh:
+      user: <CLUSTER_USER>
+      host: <RAVEN_HOST>
+    scratch: <RAVEN_SCRATCH>       # e.g. /ptmp/<CLUSTER_USER>
+    # NB: the $PTMP env var on raven points at the cmmc scratch — wrong
+    # host. Always use the value above, never $PTMP.
+  viper:
+    ssh:
+      user: <CLUSTER_USER>
+      host: <VIPER_HOST>
+    scratch: <VIPER_SCRATCH>

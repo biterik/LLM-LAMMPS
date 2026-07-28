@@ -5,7 +5,7 @@
 # Exit:    0 if all checks pass; non-zero with diagnostics on first failure.
 #
 # Mechanizes ARCHITECTURE.md §12 Layer 1 checklist as encoded in
-# ~/Desktop/DEVEL/LLM-LMPS/canon/style/lammps.md §1.1–1.5, 1.8.
+# <REPO_ROOT>/canon/style/lammps.md §1.1–1.5, 1.8.
 #
 # Does NOT cover (still manual review required):
 #   §1.4 MEAM library element index alignment with parameter file
