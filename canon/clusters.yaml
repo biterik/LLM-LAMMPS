@@ -46,7 +46,10 @@ clusters:
       # packages, build flags, accelerator config, binary path,
       # style snippets. Refresh on module rebuild.
     sbatch_defaults:
-      get-user-env: L
+      # get-user-env REMOVED 2026-08-02: this Slurm build rejects the
+      # argument form at sbatch time (see quirk
+      # sbatch_rejects_get_user_env_argument_form). Job-env determinism
+      # comes from `module purge` + explicit `module load` (L11).
       hint: nomultithread
       mail-type: BEGIN,END,FAIL
       mail-user: <NOTIFY_EMAIL>
@@ -68,7 +71,29 @@ clusters:
       # L15 — sshfs mount needs auto_cache + short attr/entry timeouts
       # to avoid stale-view problem when jobs update files cluster-side.
       # See mount.sshfs_options above.
+      # Write-side variant (2026-07-30): files just CREATED through the
+      # mount may not appear in `ls` for some time, though they are
+      # complete and readable by exact path (18 fresh .in/.slurm files
+      # were readable with correct md5 while `ls` showed `total 0`).
+      # Because rsync/find/globs enumerate via the directory listing,
+      # they silently copy NOTHING and exit 0. Therefore:
+      #   - verify writes with `stat`/`wc -c`/`md5sum` on the full
+      #     path, never with `ls`;
+      #   - never enumerate freshly written files with rsync/find/globs;
+      #   - copy by explicit filename when mirroring a just-written
+      #     run dir.
+      # Quieter than the read-side variant: a stale read looks like
+      # missing data and gets noticed; a stale write-listing looks like
+      # a successful no-op.
       - sshfs_default_options_show_stale_views
+      # Established 2026-07-28. This Slurm build rejects the argument
+      # form `--get-user-env=L` at sbatch time ("sbatch: option
+      # '--get-user-env' doesn't allow an argument"). Do not use
+      # --get-user-env at all: job-env determinism comes from
+      # `module purge` + explicit `module load` (L11). Bit on the two
+      # thread-01 anchor submit scripts staged 2026-06-30 (rejected
+      # before queueing; no queue slot lost).
+      - sbatch_rejects_get_user_env_argument_form
       # Established 2026-05-31. The cmmg lammps modules are MPI-built
       # only (no lmp_serial). The binary calls MPI_Init() before
       # processing any flag, including `-h`, so a bare `lmp ...` on the

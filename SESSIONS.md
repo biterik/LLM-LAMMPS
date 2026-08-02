@@ -8,17 +8,296 @@ LLM-LMPS Cowork session self-registers on startup, updates
 See ARCHITECTURE.md §17 (Concurrency model) for the rules and
 `canon/session-startup.md` for the startup ritual.
 
-last_index_updated: 2026-07-28T00:00Z
+last_index_updated: 2026-08-02T16:29Z
 
 ---
 
 ## active
 
-_None. No session holds the designer lock; no pilot scope is owned._
+### session_id: 2026-08-02-1409-nih-resume
+- mode: pilot
+- scope: |
+    Ni-H-PHASE-DIAGRAM-EAM-MEAM — resume per 2026-07-30-0926 handoff:
+    verify cluster job state (sacct), harvest completed arrays, settle the
+    run-11 site-catalogue question, loader extensions, notebooks.
+- started: 2026-08-02T14:09Z
+- last_active: 2026-08-02T15:50Z
+- simulation_root: ~/Desktop/SIMULATIONS   # on M5; confirmed by Erik (path de-identified 2026-08-02, lint-no-identity)
+- machine: M5
+- owns_writes_to:
+  - SIMULATIONS/Ni-H-PHASE-DIAGRAM-EAM-MEAM/**
+  - cluster-mounts/cmmg/Ni-H-PHASE-DIAGRAM-EAM-MEAM/** (proposed writes, confirmed first)
+- in_flight: |
+    CLUSTER: run 06 gcmc-long production (14 tasks, 48 h) and run 11
+    oct-only production (5 tasks, 24 h) submitted by Erik ~2026-08-02 14:30Z
+    after both probes passed. Runs 08/09/10 (EAM) + thread-04 run 04 (MEAM
+    600K fine) all COMPLETED and mirrored (MEAM 04 after Erik's remount).
+    NEW WAVE deployed to cmmg 2026-08-02 ~15:45Z, probes handed to Erik,
+    productions NOT yet cleared: run 12 EAM tet-onset (7 tasks), run 13
+    gcmc collapse-traj (3 tasks, crashes EXPECTED = data), MEAM run 05
+    transition-traj (6 tasks). All three carry new V_oct/V_tet columns.
+- notes: |
+    designer lock NOT taken; 14 proposals pending in canon/proposals-inbox.md.
+    Done this session: curated mirror of the 2026-07-30 wave; nih_loaders.py
+    (results_seeded + acc.dat loaders); method-cost + shelf/overcharge
+    analysis scripts, figs 6-8 + 4 isotherm .dat exports; OVITO structure
+    set (11 .zst) pulled to Mac; thread 03/05 records updated.
 
 ---
 
 ## recently_closed
+
+### session_id: 2026-08-02-1614-designer-inbox-merge
+- mode_at_close: designer                 # designer lock RELEASED at close — now free
+- scope: |
+    Framework canon only: merge the pending canon/proposals-inbox.md batch
+    into lessons/learnings/preferences/clusters.yaml. Cloud Cowork session
+    on M5's connected folders; no project, simulation-folder, or cluster work.
+- closed: 2026-08-02T16:29Z
+- machine: M5
+- summary: |
+    13 of 14 pending proposals MERGED (inbox statuses + designer review
+    notes written). lessons.md: L32 count() 2nd arg is a REGION-ID; L33
+    thermo keyword in a fix-consumed variable must be in thermo_style;
+    L34 derived analysis windows + truncation-is-not-non-convergence
+    (detrended drift test); L35 match MC cadence, not budget.
+    learnings.md: "harvest the failure mode" (Cluster discipline);
+    "verify writes, don't infer them" + "no bulk sshfs sweeps" (Process).
+    preferences.md: NEW "Concentration convention" (x = N_H/N_Ni
+    headline, c = N/M diagnostic only); NEW "Command hand-offs" (absolute
+    paths, copy-paste blocks, state where it runs — the two duplicate
+    proposals combined into one); Plot defaults + one-series-per-condition
+    (filled/open markers, sampling-density corollary) + region-of-interest
+    companion plots (named cut constant, plateau-aligned zoom).
+    clusters.yaml cmmg: quirk sbatch_rejects_get_user_env_argument_form
+    added AND the stale `get-user-env: L` REMOVED from sbatch_defaults
+    (it would have kept regenerating the bug); write-side sshfs
+    stale-listing variant appended to the L15 quirk.
+    EXTRA (scrub boundary): lint-no-identity flagged two /Users/<name>
+    simulation_root lines pilot sessions had written into SESSIONS.md;
+    de-identified to ~/Desktop/SIMULATIONS. All three lints clean at
+    close. Git commit prepared and handed to Erik (strict-A; not run by
+    this session).
+- handoff_to: null
+- next_session_must: |
+    ONE proposal remains pending: 2026-07-30-0934
+    promote-mu-scan-loader-to-tool. Accepted in principle, but canon
+    holds cards only for real installed tools — the loader needs its own
+    repo + code + tests deployed to ~/bin (Mac + cluster) FIRST (designer
+    session with tool-implementation scope, or Erik via Claude Code
+    against a spec), then the card + tools-catalog entry follow.
+    Small designer crumbs still open: (a) DEVEL/CLAUDE.md still points at
+    ~/Desktop/DEVEL/ though the tree lives at ~/DEVEL/ — unreachable from
+    this cloud session (DEVEL root not a connected folder); one-line fix
+    from any on-computer session. (b) The four tool cards' last_verified
+    stamps are still README-derived; re-stamp on first live invocation.
+    (c) ARCHITECTURE §17.10 open questions (stale-session GC, register
+    race) deferred by design.
+
+### session_id: 2026-07-30-0926-nih-harvest-notebooks
+- mode_at_close: pilot
+- scope: |
+    Ni-H-PHASE-DIAGRAM-EAM-MEAM. (1) Harvested the 2026-07-29 evening wave
+    (5 arrays). (2) Rebuilt/extended the three Jupyter analysis notebooks.
+    (3) Prepared a new 7-run / 49-task wave and handed the submit sequence to
+    Erik. No framework edits (designer lock NOT taken).
+- closed: 2026-07-30T11:44Z
+- simulation_root: ~/Desktop/SIMULATIONS   # on M5; confirmed by Erik (path de-identified 2026-08-02, lint-no-identity)
+- machine: M5
+- summary: |
+    HARVEST. 21589858 MEAM fine 300K 8/8 clean; 21589859 EAM 600K 11/11 clean;
+    21589860 MEAM 600K 15/15 clean; 21589050 EAM gcmc-matched 2/6 clean +
+    4/6 CRASHED on `Non-numeric pressure` (each had first reached the hydride
+    shelf, x = 0.74-0.99); 21589892 EAM tet-ext walltime-truncated at step
+    26120/80000 but CONVERGED (x = 2.514 +/- 0.003, a = 4.0694 A, superseding
+    run 01's still-climbing 2.403 at the same mu).
+    Delta_mu(gcmc - mc/sites) <= +0.175 eV; the previous [+0.26,+0.32] bracket
+    WITHDRAWN. First T-dependence in the project: plateau shifts -0.098 eV (EAM)
+    vs -0.038 eV (MEAM) over 300 K, but the MEAM value is NOT significant on its
+    0.10 eV grid.
+    NOTEBOOKS. thread-03 v3, thread-05 300 K v3, plus a NEW thread-05
+    T-dependence notebook. 16 figures, all also .pdf. Per Erik's feedback:
+    coarse+fine scans MERGED into one isotherm per condition with open symbols
+    for unassured convergence, and new tet-excluded transition-regime plots.
+    The merge exposed that the EAM has ZERO grid points inside its own 300 K
+    two-phase window (MEAM has four), so "the MEAM transition is broader" is
+    currently a statement about grid resolution, not about the potentials.
+    Fixed a latent loader bug on the way (MEAM runs use ntrials 400, not 1000).
+    NEW WAVE PREPARED, 7 runs / 49 tasks, .in + .slurm on the cmmg mount and
+    mirrored to the Mac, generator kept as
+    03_.../_gen_runs_2026-07-30.py. Key design point from Erik: gcmc cadence
+    changed to `fix gcmc 20 1000` (50 att/MD step) so it MATCHES
+    `fix mc/sites 20 1000` -- run 03 had matched only total attempts, not
+    cadence. OVITO output added to every run (dump custom id type x y z at
+    %.4f, 43-45 frames/task, ~1.0 GB on PTMP) plus a final write_data snapshot.
+    MY TWO ERRORS THIS SESSION, both caught by controls rather than by me:
+    (1) I recommended raising overlap_cutoff 1.2 -> 1.5 A on a geometric
+    argument; the probe destroyed the cell in 900 steps at a DILUTE
+    composition (N_H -> -10526, box to a = 3.22 A) while the 1.2 A control
+    passed clean at the identical cadence. Reverted; no mechanism is claimed.
+    (2) A bulk md5 sweep over the sshfs mount wedged the device bridge, the
+    generation call died before writing run 11, and I reported it as "almost
+    certainly completed" -- it was not, and Erik hit `No such file or
+    directory` mid-submit. Both filed as canon proposals.
+- state_at_close: |
+    CONFIRMED RUNNING (output dirs present on the cluster):
+      08 mcsites seed replicas -- 12 tasks, results_seeded/ has 12 dirs
+      09 ultrafine d0.005      --  5 tasks, results/ has 5 dirs
+    SUBMITTED BUT UNCONFIRMED (sshfs readdir was stale; verify with sacct):
+      10 EAM 600 K fine        --  4 tasks
+      04 MEAM 600 K fine       --  6 tasks
+    QUEUED, NOT YET CHECKED:
+      06 gcmc-long re-probe (mu -2.14, cutoff now 1.2) -- Erik queued it at
+         close. Its production array (14 tasks) MUST NOT be submitted until
+         that probe is checked: want ALL PHASES COMPLETE=1, MAXENERGYTEST=0.
+    IN FLIGHT AT CLOSE:
+      11 oct-only probe (mu -1.99, rmin 1.70) -- at step 1840/2200, x = 0.9999
+    DELIBERATELY DROPPED:
+      07 gcmc oc12 production -- with 06 reverted to cutoff 1.2 its 3 tasks
+         would be bit-identical duplicates. Its PROBE passed and is the
+         evidence that 1.2 A is safe and 1.5 A is not; keep the logs.
+- handoff_to: null
+- next_session_must: |
+    Re-run the startup ritual. Resume as PILOT on ni-h-phase-diagram-eam-meam.
+
+    1. CHECK STATE FIRST. `sacct` for the week; confirm whether 10 and MEAM 04
+       actually got submitted (stale readdir prevented confirmation at close),
+       and whether Erik submitted 06 and 11 after their probes.
+       Do NOT run bulk md5/stat sweeps over the sshfs mount -- that is what
+       wedged the bridge this session. Spot-check by exact path instead.
+
+    2. THE HEADLINE RISK, check this before writing any findings. Run 11's
+       probe reached x = 0.9999 at mu = -1.99 with a STABLE catalogue
+       (c = N/M = 0.9995 => M ~ 10976 = exactly the octahedral sublattice),
+       where run 01/05 at the SAME mu and the SAME seed gave x = 2.514.
+       If the full run 11 confirms it, the tetrahedral overcharge is a
+       SITE-CATALOGUE ARTEFACT, not a prediction of the EAM -- and the
+       project's headline EAM-vs-MEAM discrimination has to be restated in
+       thread-04 findings, thread-05 both notebooks, and project.md open
+       question 2. Do not propagate the x = 2.514 result further until run 11
+       is harvested.
+
+    3. LOADER WORK REQUIRED BEFORE HARVEST -- the notebooks will silently find
+       nothing otherwise:
+       - run 08 writes to `results_seeded/mu<MU>_seed<SEED>/`, NOT
+         `results/mu<MU>/`. `load_scan()` globs `results/mu-*` and will return
+         an empty frame. Extend it, and give the seed its own column.
+       - gcmc runs now also write `acc.*.dat` (step + 4 cumulative acceptance
+         counters). No loader reads it yet; it carries the acceptance data that
+         explains the cost ratio in Erik's (b) figure.
+       - run 09 uses 3-decimal mu dirs (mu-2.285). `float(d.name[3:])` handles
+         that already -- no change needed, just don't "fix" it.
+       - `traj.*.lammpstrj` and `final-state.*.data` are new; they are in
+         canon's "structures -- ASK FIRST" class, so they stay on the cluster
+         unless Erik names the mu worth pulling (zstd them if so).
+
+    4. STILL UNVERIFIED: the `f_GC[3..6]` index assumption behind the gcmc
+       acceptance counters. Probe ave/acc windows do not close inside 2200
+       steps, so no probe can settle it. Check the FIRST production
+       acc.*.dat from run 06: ins_att and del_att must rise monotonically.
+       Nothing else depends on them, so a wrong index cannot corrupt the
+       isotherm.
+
+    5. THEN the science, in the order the runs answer it:
+       - run 06 -> Delta_mu from BELOW + the rigid-shift test (does
+         c(mu_gcmc - Delta_mu) superpose on c(mu_mc/sites)?). Note Delta_mu
+         contains the ideal-gas kT*ln(rho*Lambda^3) term, so it is a constant
+         at fixed T and is NOT transferable to 600 K.
+       - runs 06 + 08 -> Erik's (b): attempts needed by each method to reach
+         the same composition at nearly-empty / in-gap / nearly-full. Both are
+         80000 steps at 50 att/step, so the axes need no rescaling.
+       - run 09 -> does the EAM have any intermediate composition at 300 K?
+       - runs 10 + MEAM 04 -> make dmu_M/dT significant.
+       - run 11 -> item 2 above.
+       WAVE 2, only after Delta_mu is known: multi-seed gcmc (~12 tasks) at the
+       mu matched to run 08's three target compositions, so the gcmc half of
+       the (b) figure gets the same n=4 error bars the mc/sites half has.
+
+    6. 14 proposals PENDING in canon/proposals-inbox.md for a designer session
+       (the 15th `status: pending` match is the format template's placeholder,
+       not a real entry). EIGHT of the 14 were filed today: derived analysis
+       windows + truncation-is-not-non-convergence; harvest the failure mode;
+       promote the mu-scan loader to a tool; one-series-per-condition plots;
+       exclude-the-runaway-branch companion plots; match MC cadence not budget;
+       sshfs write-side stale listings; verify-writes-do-not-infer-them).
+
+    7. HOUSEKEEPING: `.mount-write-probe` left in run 06's cluster dir (rm is
+       refused through the mount -- delete from a real shell).
+       SIMULATIONS/_to_delete/ holds 21 superseded figures + 3 transfer
+       tarballs, safe to remove.
+
+### session_id: 2026-07-29-1154-sim-ideas-backlog
+- mode_at_close: pilot
+- scope: |
+    (1) SIMULATION-IDEAS.md backlog created at SIMULATIONS/ root.
+    (2) Ni-H-PHASE-DIAGRAM-EAM-MEAM pilot scope (taken over from
+    2026-07-28-1712): harvest + analysis + next production wave.
+- closed: 2026-07-29T16:52Z
+- summary: |
+    Big day. (1) IDEAS: SIMULATION-IDEAS.md created with four Ni-H idea
+    families A-D (H diffusion; (100)-block uptake/degas; single
+    dislocations incl. jogs; surface hydride islands), lit-scanned
+    (closest prior art: Leon-Cazares et al. 2025 MD-GCMC nano-hydrides
+    preprint overlaps C.1 - read before scoping; C.2/C.3 and D look
+    open). Decisions: degassing always thin-film w/ free surfaces;
+    B.1 dislocations from real load/unload.
+    (2) Ni-H HARVEST: overnight wave verified 41/41 clean. Thread-01 0K
+    anchors done (MEAM NiH a0=3.73000 A, new; dE/H anchors -2.383 EAM /
+    -2.290 MEAM match the 300K onsets); EAM fine scan: plateau
+    -2.29..-2.26, tet overcharge at -1.99 (unconverged); MEAM coarse:
+    plateau -2.30..-2.20, NO tet overfill to -1.60 (first
+    potential-discriminating result). 90 files curated-mirrored + 4
+    mile-pebble structures pulled (zstd). Two executed notebooks
+    committed (thread 03: c(mu) by method, Delta_mu, trials-axis
+    filling dynamics, per-mu convergence panels; thread 05: EAM-vs-MEAM
+    c(mu), a(mu), a(x), dE-per-H). x=H/Ni convention fixed
+    (proposals-inbox). Run records written 01/03/04; threads -> open.
+    T-ladder reduced to 300+600 K (project.md).
+    (3) NEW RUNS: gcmc-matched-1M-trials array RUNNING (21589050;
+    mid-run: gcmc plateau below -2.10 -> Delta_mu <~ +0.16 eV; tasks
+    will hit the 12h wall ~step 300-360k, benign; mu=-1.60 box-collapse
+    anomaly logged - watch at harvest). Four runs PREPPED with probes
+    PASSED (MEAM fine 300K; EAM 600K; MEAM 600K; tet-ext 4x @64 ranks
+    after L26 recalibration) - production sbatch commands handed to
+    Erik, submission possibly tonight.
+- handoff_to: null
+- next_session_must: |
+    Re-run the startup ritual; resume as PILOT on
+    ni-h-phase-diagram-eam-meam. FIRST: harvest the five arrays
+    (21589050 gcmc-matched + the four if Erik submitted: MEAM-fine-300K,
+    EAM-600K, MEAM-600K, tet-ext). Expect gcmc tasks TIMED OUT near
+    step 300-360k WITHOUT "JOB DONE" markers - that is expected, not a
+    failure; analyze data-through-step-N from ave/trace. Check the
+    mu=-1.60 box-collapse anomaly (thread-03 run-03 record). Then:
+    curated mirror, extend notebook v2 with equilibrated Delta_mu +
+    method comparison, 600K isotherm analysis, thread.md run records.
+    Open design work (co-develop, do NOT clone): thread-01 groups B
+    (E(c) random fillings) + C (dilute H, H-vacancy, 0K Cij),
+    discharge/hysteresis branch, oct-only window control. Also pending:
+    file SCIENCE-KICKOFF-NIH-STOICHIOMETRY.md into the project (Erik
+    deferred); 2 proposals in canon/proposals-inbox.md await a designer
+    session (x=H/Ni convention; absolute-paths command hand-offs).
+
+### session_id: 2026-07-28-1712-Ni-H-isotherms
+- mode_at_close: pilot
+- scope: |
+    Ni-H-PHASE-DIAGRAM-EAM-MEAM — resume after the MC-SITES-LAMMPS detour.
+    Reconciled SCIENCE-KICKOFF-NIH-STOICHIOMETRY.md with the thread 02/03
+    plans, settled the cmmg directory layout, ran the kickoff planning and
+    the prepped thread-01 0K anchors.
+- closed: 2026-07-29T12:39Z        # taken over by successor; conversation had ended without wrap-up
+- summary: |
+    Submitted and partially harvested the first production wave on cmmg
+    (probes passed first; two bug classes fixed pre-production, see
+    proposals-inbox): 0K anchors EAM+MEAM COMPLETE (MEAM NiH
+    a0 = 3.73000 A, new number); EAM gcmc shift reference (8 pts
+    -2.70..-2.00) COMPLETE; EAM 14x14x14 300K fine mu-scan (18 pts
+    -2.50..-1.99 d0.03, plateau bracketing -2.26..-2.23 mid-run) and
+    MEAM coarse mu-scan (15 pts -3.00..-1.60, onset -2.3..-2.2) left
+    RUNNING overnight. Analysis tail (mirror, equilibration checks,
+    c(mu)/a(mu) plots, gcmc shift fit) and thread.md run records NOT
+    done — handed to successor.
+- handoff_to: 2026-07-29-1154-sim-ideas-backlog
 
 ### session_id: 2026-07-28-consolidate-one-tree
 - mode_at_close: designer                 # designer lock RELEASED at close — now free

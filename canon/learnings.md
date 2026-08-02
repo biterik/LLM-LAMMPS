@@ -180,6 +180,22 @@ lesson:
   reintroduce those bugs. The probe doubles as the L26
   walltime-calibration source -- one job, two purposes.
 
+- **Harvest the failure mode, not just the failure count.** For every
+  task that did not complete, the harvest records: the terminating
+  error verbatim, the step it died at versus its nominal length, and
+  the state of the observables immediately before. Distinguish
+  walltime truncation (data usually usable, see L34) from numerical
+  instability (data usable up to the onset, and the onset itself is a
+  finding) from a setup bug (data void). Where an instability is
+  method-specific, say which method is implicated and why the
+  alternative is immune — that comparison is often worth more than the
+  run that was intended. (2026-07-30, Ni-H thread 03 run 03: 4/6
+  `fix gcmc` tasks died on `Non-numeric pressure` after first filling
+  to the hydride shelf, x = 0.74–0.99. "4/6 failed" alone would have
+  lost the four lower-bound compositions, the method-safety contrast
+  with `fix mc/sites`, and the inference that low-mu is the safe
+  direction to extend the grid — all three are results.)
+
 ## Thread design
 
 - **List-of-co-equal mile-pebbles** is the right shape when a thread's
@@ -346,6 +362,25 @@ lesson:
   designer session merges proposals into canonical files in batches.
   Exception: a designer+pilot session writes directly. See
   ARCHITECTURE.md §17.7.
+- **Verify writes, do not infer them.** A file write is reported as
+  done only after it has been read back — size or checksum on the
+  files actually touched. If the check cannot run (bridge down, mount
+  stale, call timed out), say **UNVERIFIED** and name what needs
+  confirming; never translate "the write came earlier in the script
+  than the crash" into a confidence estimate. A hedge attached to a
+  wrong probability still sends Erik down the wrong path.
+  (2026-07-30: run 11's generation call died mid-script; the pilot
+  reported the files "almost certainly completed" — they did not
+  exist, and Erik hit `No such file or directory` mid-submit.)
+- **No bulk sweeps over the sshfs mount.** Checksumming or stat-ing
+  tens of files across the mount can hang it and take the whole device
+  bridge with it (2026-07-30: a 21-file md5 sweep was enough — even
+  `echo` failed for minutes afterward). Verification does not require
+  checksumming everything: spot-check the files just written, one or
+  two per directory, by exact path, and prefer `wc -c` over `md5sum`
+  for large files. See also the write-side stale-listing quirk in
+  `clusters.yaml` (never enumerate freshly written files with
+  rsync/find/globs).
 - **The Cowork task list is not durable storage.** Task entries evaporate
   between conversations. When a lesson, decision, or design note surfaces,
   write it to its destination plain file (`canon/lessons.md`,

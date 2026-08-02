@@ -878,3 +878,121 @@ inside a `$(...)` → reject (L30).
 
 **Target:** `style/lammps.md` §1 pre-flight — fold into a single
 `$(...)`/`%`-in-print check alongside L30.
+
+## L32 — `count(group,ID)` second argument is a REGION-ID, not an atom type
+
+**Rule:** In LAMMPS equal-style variables, `count(group,ID)`'s second
+argument is a **region-ID**, not an atom type. To count atoms of a
+type, define a static group by type after the atoms exist
+(`group NI_ATOMS type 1`) and use `count(NI_ATOMS)`.
+
+Runtime failure mode: `ERROR: Region <ID> in variable formula does not
+exist` at **first evaluation** — the parse passes, so only a run or a
+print catches it. This is a fail-late bug class: a lint on the input
+text alone will not flag it.
+
+**Where it bit:** 2026-07-28, `ni-h-phase-diagram-eam-meam` thread 01
+anchor jobs 21570524/21570525 (inputs staged 2026-06-30, first actual
+run). All four `relax_*.in` used `variable n_Ni equal count(all,1)` /
+`count(all,2)`. The minimizations completed; the results epilogue
+aborted at the first `${n_Ni}` print. Class-fixed in all four inputs,
+both trees, same evening.
+
+**Target:** `style/lammps.md` §1 pre-flight — for every `count(` in an
+equal-style variable, verify the second argument (if present) names a
+defined region; if the intent is per-type counting, require the
+group-by-type idiom.
+
+## L33 — Thermo keyword in a variable requires that keyword in `thermo_style custom`
+
+**Rule:** An equal-style variable referencing an energy thermo keyword
+(`pe`, etc.) that is evaluated by a fix (e.g. `fix ave/time ... v_pe`)
+requires that keyword to appear in `thermo_style custom` — otherwise
+LAMMPS aborts at the first `run` with
+`ERROR: Thermo keyword pe in variable requires thermo to use/init
+potential energy`.
+
+A large `thermo N` cadence (L27) does NOT conflict with this: the
+keyword only needs to be **in the style**, not printed often. L27's
+"suppress in-loop thermo via huge N" and L33's "keyword must be in the
+style" compose cleanly.
+
+**Where it bit:** 2026-07-28, `ni-h-phase-diagram-eam-meam`, probe jobs
+21570516/17/18: all three isotherm inputs carried `variable pe equal
+pe` + ave/time streams (the SCIENCE-KICKOFF §6.2 suggested addition,
+never previously run) with `thermo_style custom` lacking `pe`. All
+three probes aborted at `run ${equil}` in ~8 s — the probe rule caught
+it before 41 queued production tasks inherited it. Fixed by adding
+`pe` to `thermo_style` in all three inputs, both trees.
+
+**Target:** `style/lammps.md` §1 pre-flight — for every thermo keyword
+referenced inside an equal-style variable that a fix consumes, check it
+appears in `thermo_style custom`.
+
+## L34 — Analysis windows are derived, not hardcoded; truncation is not non-convergence
+
+**Rule:** Any averaging/summary window in an analysis script or
+notebook is computed from the run's OWN last written step (e.g. the
+final 30 % of the post-equilibration window), never from a hardcoded
+step number — so the same code is correct for a 20k-step probe and a
+400k-step production run. And whether a point counts as equilibrated is
+decided by a **drift test on the observable** over that window, never
+by whether the job reached its nominal step count. A job killed by the
+walltime whose observable is flat IS a usable data point; a job that
+finished cleanly whose observable is still climbing is NOT.
+
+Corollary on the drift test itself: judge drift against the
+**detrended** residual scatter, floored by the relevant counting noise.
+Comparing drift to the raw block scatter is circular — a drifting point
+scatters *because* it drifts, and the inflated floor then excuses the
+drift. Comparing drift to the value itself is also wrong: on a dilute
+branch carried by a few atoms, counting noise alone is a
+several-percent effect and would condemn well-converged points.
+
+**Where it bit:** 2026-07-30, Ni-H thread 03. The v2 notebook hardcoded
+`step > 14000` as the averaging window, correct for the 20 000-step
+runs it was written against. The next wave contained a 400 000-step run
+(gcmc-matched) and a run truncated at 26 120 of 80 000 steps
+(tet-extended). Applied unchanged, the hardcoded window would have
+averaged the last 6 % of one run and read the other as "unusable". In
+fact the truncated run was fully converged (drift -2.3e-3 per 1e5
+attempts against a 1.5e-2 noise floor) and produced the thread's
+cleanest number, x = 2.514 — correcting an earlier 2.403 that had
+itself passed v2's circular check while still climbing.
+
+**Target:** `learnings.md` Process (analysis-plan discipline) refers
+here; any future analysis-script template derives its window from the
+data extent.
+
+## L35 — Match the MC cadence, not the MC budget
+
+**Rule:** Any comparison of two MC move sets embedded in MD fixes the
+same **attempts per MD step** for both, and preferably the same total
+step count too, so the two runs are comparable step-for-step and
+attempt-for-attempt with the move type as the only difference. Matching
+totals while letting cadence differ silently varies the amount of MD
+relaxation per attempt — which is itself a variable. State in the run
+record which quantity is matched.
+
+Corollary: a cadence mismatch is harmless for equilibrium observables
+(cadence changes the rate of convergence, not the equilibrium
+distribution) and fatal for cost/efficiency observables and for any
+quantity read off points that never equilibrated. Before quoting a cost
+ratio, check the cadence line of both inputs, not the budget arithmetic
+in the run notes.
+
+**Where it bit:** 2026-07-29/30, Ni-H thread 03. Run 03 was designed as
+a "matched budget" comparison: `fix gcmc 100 250` (2.5 attempts/MD
+step) x 400k steps = 1e6 attempts, against `fix mc/sites 20 1000`
+(50 attempts/MD step) x 20k steps = 1e6 attempts. Equal totals, but a
+factor 20 difference in cadence — the gcmc run gave the lattice 20x
+longer to relax between exchange attempts, which flatters
+random-insertion acceptance, and left the MD-step axis meaningless
+across methods. Erik caught it reading the two inputs side by side:
+"To be able to have a proper comparison, they should have the same
+number of attempts per the same number of MD steps!" The 2026-07-30
+wave fixed the class: gcmc cadence changed to `fix gcmc 20 1000` to
+match `fix mc/sites 20 1000`.
+
+**Target:** `learnings.md` "Analysis plan before data-collection plan"
+cross-ref; design-time check whenever two MC fixes are compared.

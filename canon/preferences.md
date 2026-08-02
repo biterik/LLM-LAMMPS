@@ -9,6 +9,19 @@ Pilot-maintained. Pilot proposes new entries; Erik confirms.
   dislocations, slabs).
 - `atom_style atomic` for pure metals; `charge` only when needed.
 
+## Concentration convention (Ni-H and interstitial systems)
+
+- **x = N_H/N_Ni is the headline concentration.** For Ni-H (and any
+  interstitial system), concentration in outputs, analyses, plots and
+  prose is x = N_species / N_host (e.g. H per Ni). The site-catalogue
+  occupancy c = N/M of `fix mc/sites` is tool-dependent (the dynamic
+  catalogue's M changes with the clearance window and lattice
+  expansion — 1/3 on the NiH shelf when tet sites are counted) and
+  appears only as a diagnostic column, never as the reported
+  concentration. (Set 2026-07-29, Erik's words: "concentration please
+  as number of H / number of Ni ... keep this convention in the
+  future".)
+
 ## Potentials — go-to picks
 
 (stubs; fill as we observe Erik's defaults across projects)
@@ -225,6 +238,25 @@ rule in `canon/learnings.md` ("Workflow rules"): metadata that
 downstream consumers need belongs with
 the design, not in a follow-up. Surfaced 2026-05-31 Thread 03.
 
+## Command hand-offs
+
+- **Absolute paths, copy-paste ready, always.** Any command Erik is
+  asked to run (sbatch, ssh, rsync, cd, analysis invocations) appears
+  as a complete copy-pasteable block with full absolute paths — every
+  `cd` targets an absolute directory (included whenever the command is
+  cwd-sensitive, e.g. sbatch scripts resolving `SLURM_SUBMIT_DIR`),
+  and every file argument not resolved by the script itself is
+  absolute. No relative `cd ../..` chains, no "from the same directory
+  as before", no "from the respective run dirs" prose. State where the
+  block runs (which machine/shell, e.g. "in your cmmg shell") at the
+  top; one block per logical action, in execution order. A hand-off
+  must be paste-able from any starting directory.
+  (Set 2026-07-28/29, Ni-H sessions. Erik's words: "can you tell me
+  exactly what to submit how and where (ALWAYS!)" and "please (always,
+  remember that) give the correct path and submit command so I can
+  easily copy paste". Promotes the identical instruction from the
+  2026-07-28 SCIENCE-KICKOFF handoff to canon.)
+
 ## Plot defaults
 
 - **gnuplot-friendly format.** Space-separated columns; `#`-prefixed
@@ -240,3 +272,35 @@ the design, not in a follow-up. Surfaced 2026-05-31 Thread 03.
   target coefficient, and the higher-order verifiers (per L24). Set
   2026-05-31 (Thread 02 closure feedback). Applies to matplotlib
   outputs from `analyze-Cij.py` and any future fit-plot scripts.
+- **One series per physical condition; quality goes in the marker.**
+  Merge all scans of the same condition (coarse + fine mu windows, an
+  original plus a longer rerun of one point) into a single curve,
+  finer or longer runs superseding coarser ones on shared abscissa
+  values, and keep provenance in a `src` column so any point can be
+  traced to its run. Encode data quality with marker style — **filled
+  = converged/assured, open = not assured** — never by drawing a
+  second series. Erik's words (2026-07-30): "separating the data into
+  fine and the first (coarse) run does not provide any new results,
+  please plot them together. use however open symbols if the
+  convergence is not assured."
+  Corollary: **report the sampling density of any feature you
+  compare.** When a claim rests on the *shape* of a transition (width,
+  sharpness), print the number of grid points that actually fall
+  inside it for each curve. A curve through two points that jump from
+  x ~ 0 to x ~ 1 is evidence about the grid, not about the physics.
+  (The 2026-07-30 merge exposed exactly this: the EAM had ZERO points
+  inside its own 300 K two-phase window while the MEAM had four.)
+- **Give the region of interest its own axis.** If part of the data
+  runs away in the plotted quantity (e.g. tetrahedral overcharge,
+  x → 2.5, against a transition at x < 1), add a companion figure
+  restricted to the regime the question is about, using a named cut
+  constant (e.g. `X_TET = 1.05`) so the same threshold is applied
+  everywhere and is visible in the code. A plateau-aligned zoom
+  (abscissa minus each curve's own plateau) is the version that
+  compares shapes across curves whose absolute reference differs.
+  Where the runaway branch IS shown, mark it distinctly (separate
+  colour) so it cannot be misread as belonging to the main regime, and
+  never drop it without saying so in the caption. Erik's words
+  (2026-07-30): "Please provide additional plots that exlude mu /
+  concentraiton values where the tetrahedral sites get filled, so that
+  one can actually see the transition regime better."

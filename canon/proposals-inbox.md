@@ -373,3 +373,670 @@ cluster scope:
 Merged 2026-05-31T21:35Z by session 2026-05-31-1403-Ni-thread03 (briefly re-promoted to designer+pilot for the merge).
 Merged into .lmps/session-startup.md step 5 (Brief Erik).
 
+
+---
+proposal_id: 2026-07-28-1930-no-get-user-env-on-cmmg
+session_id: 2026-07-28-1712-Ni-H-isotherms
+proposed_at: 2026-07-28T19:30Z
+target_file: canon/clusters.yaml
+target_section: cmmg quirks (+ cross-ref from canon/style/shell.md submit-script discipline)
+priority: routine
+status: merged                          # was pending
+---
+
+## Proposed rule
+
+Do not use `#SBATCH --get-user-env=L` (or any `--get-user-env` form) in
+cmmg submit scripts: the cmmg Slurm build rejects the argument form with
+`sbatch: option '--get-user-env' doesn't allow an argument`, and the flag
+is redundant anyway -- `module purge` + explicit `module load` (L11) is
+the sanctioned way to make the job environment deterministic.
+
+## Where it bit
+
+2026-07-28, project ni-h-phase-diagram-eam-meam, thread
+01_STRUCTURE-AND-0K-ANCHORS. Both anchor submit scripts staged on
+2026-06-30 (`submit-relax-Pezold-EAM.slurm`,
+`submit-relax-KoShimLee-MEAM.slurm`) carried `#SBATCH --get-user-env=L`;
+sbatch refused both at submit time (no queue slot lost -- rejected before
+queueing). Class-fixed the same evening: line deleted from both scripts
+in both trees (Mac + cluster); sweep over the whole project found no
+other occurrence.
+
+## Suggested wording
+
+For clusters.yaml cmmg quirks list:
+
+  # Established 2026-07-28. This Slurm build rejects the argument form
+  # `--get-user-env=L` at sbatch time ("option '--get-user-env' doesn't
+  # allow an argument"). Do not use --get-user-env at all: job-env
+  # determinism comes from `module purge` + explicit `module load` (L11).
+  - sbatch_rejects_get_user_env_argument_form
+
+## Designer review notes
+
+Merged 2026-08-02T16:20Z by session 2026-08-02-1614-designer-inbox-merge.
+Target: canon/clusters.yaml cmmg quirks. Quirk `sbatch_rejects_get_user_env_argument_form` added as proposed. ALSO removed the stale `get-user-env: L` line still sitting in sbatch_defaults, which would have kept regenerating the bug.
+
+---
+proposal_id: 2026-07-28-2010-count-second-arg-is-region
+session_id: 2026-07-28-1712-Ni-H-isotherms
+proposed_at: 2026-07-28T20:10Z
+target_file: canon/lessons.md
+target_section: new lesson L<N>
+priority: routine
+status: merged                          # was pending
+---
+
+## Proposed rule
+
+In LAMMPS equal-style variables, `count(group,ID)`'s second argument is
+a REGION-ID, not an atom type. To count atoms of a type, define a static
+group by type after the atoms exist (`group NI_ATOMS type 1`) and use
+`count(NI_ATOMS)`. Runtime failure mode: "Region <ID> in variable
+formula does not exist" at first evaluation -- parse passes, so only a
+run/print catches it.
+
+## Where it bit
+
+2026-07-28, ni-h-phase-diagram-eam-meam thread 01 anchor jobs 21570524/
+21570525 (staged 2026-06-30, first actual run). All four relax_*.in used
+`variable n_Ni equal count(all,1)` / `count(all,2)`. Minimizations
+completed; the results epilogue aborted at the first ${n_Ni} print.
+Class-fixed in all four inputs, both trees, same evening.
+
+## Suggested wording
+
+(as in "Proposed rule"; incident text above supplies the "where it bit")
+
+## Designer review notes
+
+Merged 2026-08-02T16:20Z by session 2026-08-02-1614-designer-inbox-merge.
+Target: canon/lessons.md. Assigned L32; prose adopted near-verbatim, pre-flight grep added to the Target line.
+
+---
+proposal_id: 2026-07-28-2012-variable-thermo-keyword-needs-thermo-style
+session_id: 2026-07-28-1712-Ni-H-isotherms
+proposed_at: 2026-07-28T20:12Z
+target_file: canon/lessons.md
+target_section: new lesson L<N>
+priority: routine
+status: merged                          # was pending
+---
+
+## Proposed rule
+
+An equal-style variable referencing an energy thermo keyword (`pe`,
+etc.) evaluated by a fix (e.g. `fix ave/time ... v_pe`) requires that
+keyword to appear in `thermo_style custom` -- otherwise LAMMPS aborts at
+the first run with "Thermo keyword pe in variable requires thermo to
+use/init potential energy". A large `thermo N` cadence (L27) does NOT
+conflict: the keyword only needs to be in the style, not printed often.
+
+## Where it bit
+
+2026-07-28, ni-h-phase-diagram-eam-meam, probe jobs 21570516/17/18: all
+three isotherm inputs carried `variable pe equal pe` + ave/time streams
+(the SCIENCE-KICKOFF sec 6.2 suggested addition, never previously run)
+with `thermo_style custom` lacking `pe`. All three probes aborted at
+`run ${equil}` in ~8 s -- the probe rule caught it before 41 queued
+production tasks inherited it. Fixed by adding `pe` to thermo_style in
+all three inputs, both trees.
+
+## Suggested wording
+
+(as in "Proposed rule")
+
+## Designer review notes
+
+Merged 2026-08-02T16:20Z by session 2026-08-02-1614-designer-inbox-merge.
+Target: canon/lessons.md. Assigned L33; noted explicitly that L27's huge `thermo N` cadence composes cleanly with this rule.
+
+---
+proposal_id: 2026-07-28-2040-absolute-paths-in-every-handoff
+session_id: 2026-07-28-1712-Ni-H-isotherms
+proposed_at: 2026-07-28T20:40Z
+target_file: canon/preferences.md
+target_section: new subsection "Command hand-offs"
+priority: routine
+status: merged                          # was pending
+---
+
+## Proposed rule
+
+Every command block handed to Erik for execution uses full absolute
+paths -- every `cd` targets an absolute directory, every file argument
+that is not resolved by the script itself is absolute. No relative `cd
+../..` chains, no "from the same directory as before". State where the
+block runs (which machine/shell) at the top.
+
+## Where it bit
+
+2026-07-28, ni-h-phase-diagram-eam-meam submission hand-offs: the pilot
+issued sbatch blocks with relative cd chains; Erik asked "can you tell
+me exactly what to submit how and where (ALWAYS!)". The
+SCIENCE-KICKOFF-NIH-STOICHIOMETRY.md header already records this as a
+standing preference ("Give Erik exact absolute paths in every command");
+it was not yet in canon, so a fresh session missed it.
+
+## Suggested wording
+
+- **Absolute paths in every command hand-off.** Each `cd` absolute; each
+  block prefixed with where it runs (e.g. "in your cmmg shell"). A
+  hand-off must be paste-able from any starting directory. Relative
+  navigation between blocks is never assumed to survive.
+
+## Designer review notes
+
+Merged 2026-08-02T16:20Z by session 2026-08-02-1614-designer-inbox-merge.
+Target: canon/preferences.md, new 'Command hand-offs' subsection. COMBINED with duplicate proposal 2026-07-29-1650-absolute-paths-copy-paste into a single rule (absolute paths + copy-paste block + state where it runs).
+
+---
+proposal_id: 2026-07-29-1310-h-concentration-convention
+session_id: 2026-07-29-1154-sim-ideas-backlog
+proposed_at: 2026-07-29T13:10Z
+target_file: canon/preferences.md
+target_section: new subsection "Concentration convention (Ni-H and interstitial systems)"
+priority: routine
+status: merged                          # was pending
+---
+
+## Proposed rule
+
+Report and plot interstitial concentration as x = N_H / N_Ni (H per
+host atom), not as the site-catalogue occupancy c = N/M, in all
+analyses, plots, tables and prose. c = N/M may be carried alongside as
+a diagnostic, but x is the headline quantity.
+
+## Where it bit
+
+2026-07-29, Ni-H-PHASE-DIAGRAM-EAM-MEAM analysis of the 2026-07-28
+mu-scan arrays (jobs 21570566/67/92). The mc/sites output c = N/M is
+normalized by the *dynamic* Voronoi site catalogue, so its value
+depends on which site types the clearance window admits (1/3 on the
+NiH shelf when tet sites are counted) — it is tool-dependent, not a
+material property. Erik's explicit instruction when commissioning the
+analysis notebooks: "concentration please as number of H / number of
+Ni (please keep this convention in the future)".
+
+## Suggested wording
+
+- **Concentration convention: x = N_H/N_Ni.** For Ni-H (and any
+  interstitial system), concentration in outputs, analyses, plots and
+  prose is x = N_species / N_host (e.g. H per Ni). The site-catalogue
+  occupancy c = N/M of `fix mc/sites` is tool-dependent (the dynamic
+  catalogue's M changes with the clearance window and lattice
+  expansion) and appears only as a diagnostic column, never as the
+  reported concentration. (Set 2026-07-29, Erik's words: "concentration
+  please as number of H / number of Ni ... keep this convention in the
+  future".)
+
+## Designer review notes
+
+Merged 2026-08-02T16:20Z by session 2026-08-02-1614-designer-inbox-merge.
+Target: canon/preferences.md, new 'Concentration convention' section. Prose adopted near-verbatim, incl. Erik's quoted instruction.
+
+---
+proposal_id: 2026-07-29-1650-absolute-paths-copy-paste
+session_id: 2026-07-29-1154-sim-ideas-backlog
+proposed_at: 2026-07-29T16:50Z
+target_file: canon/preferences.md
+target_section: new subsection "Command hand-offs"
+priority: routine
+status: merged                          # was pending
+---
+
+## Proposed rule
+
+Every command handed to Erik for execution (sbatch, ssh, rsync, cd,
+analysis invocations) is given with FULL ABSOLUTE PATHS and as a
+ready-to-copy-paste block — never relative paths, never "cd into the
+run dir" prose without the literal cd line.
+
+## Where it bit
+
+2026-07-29, Ni-H session: pilot presented probe sbatch commands with a
+bare "from the respective run dirs" preamble; Erik could not find the
+directories and had to ask ("can you please (always, remember that)
+give the correct path and submit command so I can easily copy paste?").
+The SCIENCE-KICKOFF-NIH-STOICHIOMETRY.md handoff (2026-07-28) had
+already recorded the same standing preference ("Give Erik exact
+absolute paths in every command"); it belongs in canon, not in a
+per-project handoff file.
+
+## Suggested wording
+
+- **Command hand-offs: absolute paths, copy-paste ready.** Any command
+  Erik is asked to run appears as a complete copy-pasteable block with
+  full absolute paths — including the `cd` line when the command is
+  cwd-sensitive (sbatch scripts resolving `SLURM_SUBMIT_DIR`). One
+  block per logical action, in execution order. Erik's own words
+  (2026-07-29): "please (always, remember that) give the correct path
+  and submit command so I can easily copy paste". (Promotes the
+  identical instruction from the 2026-07-28 kickoff handoff to canon.)
+
+## Designer review notes
+
+Merged 2026-08-02T16:20Z by session 2026-08-02-1614-designer-inbox-merge.
+Target: canon/preferences.md, new 'Command hand-offs' subsection. COMBINED with duplicate proposal 2026-07-28-2040-absolute-paths-in-every-handoff; both Erik quotes retained.
+
+---
+proposal_id: 2026-07-30-0930-analysis-window-never-hardcoded
+session_id: 2026-07-30-0926-nih-harvest-notebooks
+proposed_at: 2026-07-30T09:30Z
+target_file: canon/lessons.md
+target_section: new lesson L<next>
+priority: high
+status: merged                          # was pending
+---
+
+## Proposed rule
+
+An analysis script or notebook must derive its averaging window from each
+run's OWN data extent, never from a hardcoded step number. And a run that
+was cut short (walltime, cancellation) is not thereby unconverged: the
+verdict comes from a drift test on the observable, not from the step count.
+
+## Where it bit
+
+2026-07-30, Ni-H thread 03. The v2 notebook hardcoded `step > 14000` as the
+averaging window, correct for the 20 000-step runs it was written against.
+The next wave contained a 400 000-step run (gcmc-matched) and a run
+truncated at 26 120 of 80 000 steps (tet-extended). Applied unchanged, the
+hardcoded window would have averaged the last 6 % of one run and would have
+been read as "the truncated run is unusable" for the other. In fact the
+truncated run was fully converged (drift -2.3e-3 per 1e5 attempts against a
+1.5e-2 noise floor) and produced the thread's cleanest number, x = 2.514,
+correcting an earlier value of 2.403 that had itself passed v2's check while
+still climbing.
+
+## Suggested wording
+
+- **L<N>: analysis windows are derived, not hardcoded; truncation is not
+  non-convergence.** Any averaging/summary window is computed from the run's
+  own last written step (e.g. the final 30 % of the post-equilibration
+  window), so the same code is correct for a 20k-step probe and a 400k-step
+  production run. Whether a point counts as equilibrated is decided by a
+  drift test on the observable over that window, never by whether the job
+  reached its nominal step count. A job killed by the walltime whose
+  observable is flat IS a usable data point; a job that finished cleanly
+  whose observable is still climbing is NOT.
+  Corollary on the drift test itself: judge drift against the **detrended**
+  residual scatter, floored by the relevant counting noise. Comparing drift
+  to the raw block scatter is circular — a drifting point scatters *because*
+  it drifts, and the inflated floor then excuses the drift (exactly how the
+  unconverged mu = -1.99 point passed the v2 check). Comparing drift to the
+  value itself is also wrong: on a dilute branch carried by a few atoms,
+  counting noise alone is a several-percent effect and would condemn
+  well-converged points.
+
+## Designer review notes
+
+Merged 2026-08-02T16:20Z by session 2026-08-02-1614-designer-inbox-merge.
+Target: canon/lessons.md. Assigned L34, incl. the detrended-drift-test corollary; learnings.md 'Harvest the failure mode' entry cross-references it.
+
+---
+proposal_id: 2026-07-30-0932-report-failure-mode-not-just-failure
+session_id: 2026-07-30-0926-nih-harvest-notebooks
+proposed_at: 2026-07-30T09:32Z
+target_file: canon/learnings.md
+target_section: "Cluster discipline"
+priority: routine
+status: merged                          # was pending
+---
+
+## Proposed rule
+
+When a production task fails, the harvest records the failure MODE and what
+the task had achieved before failing — not just "N/M failed". A crashed task
+that got most of the way is data plus a method result; discarding it as a
+failed batch throws both away.
+
+## Where it bit
+
+2026-07-30, Ni-H thread 03 run 03. Four of six `fix gcmc` tasks died on
+`ERROR: Non-numeric pressure - simulation unstable`, preceded by
+`MAXENERGYTEST` warnings. The pre-harvest expectation (recorded 2026-07-29)
+was that they would hit the 12 h walltime — a benign outcome. They did not;
+they crashed after first filling to the hydride shelf (x = 0.74...0.99) and
+then destroying the cell (a -> ~2.0 A). Recording only "4/6 failed" would
+have lost (a) the four lower-bound compositions, (b) the fact that
+random-insertion GCMC is numerically unsafe at high occupancy on this
+potential while the site-catalogue method cannot produce that configuration
+by construction, and (c) the inference that the LOW-mu side is the safe
+direction to extend the grid. All three are results.
+
+## Suggested wording
+
+Add to the "Cluster discipline" subsection:
+
+- **Harvest the failure mode, not just the failure count.** For every task
+  that did not complete, record: the terminating error verbatim, the step it
+  died at versus its nominal length, and the state of the observables
+  immediately before. Distinguish walltime truncation (data usually usable,
+  see L<N>) from numerical instability (data usable up to the onset, and the
+  onset itself is a finding) from a setup bug (data void). Where an
+  instability is method-specific, say which method is implicated and why the
+  alternative is immune — that comparison is often worth more than the run
+  that was intended.
+
+## Designer review notes
+
+Merged 2026-08-02T16:20Z by session 2026-08-02-1614-designer-inbox-merge.
+Target: canon/learnings.md 'Cluster discipline'. Adopted as proposed, with the run-03 incident condensed inline; L<N> reference resolved to L34.
+
+---
+proposal_id: 2026-07-30-0934-promote-mu-scan-loader-to-tool
+session_id: 2026-07-30-0926-nih-harvest-notebooks
+proposed_at: 2026-07-30T09:34Z
+target_file: canon/tools/ (new tool card) + canon/tools/examples-catalog.md
+target_section: new tool card, per the "3+ uses -> promote" rule in learnings.md "Tools"
+priority: routine
+status: pending
+---
+
+## Proposed rule
+
+Promote the mu-scan results loader + per-mu summariser to a real tool with a
+card, per the standing "hand-rolled 3+ times -> propose promotion" rule.
+
+## Where it bit
+
+2026-07-30: the same loader (walk `results/mu-*/`, read `ave.*.dat` and
+`trace.*.dat`, attach mu from the directory name, convert MD steps to
+cumulative MC attempts via the fix cadence, then summarise per mu with a
+convergence verdict) is now hand-written in THREE notebooks:
+`03_.../analysis_c-mu-shift-and-equilibration_EAM-300K.ipynb`,
+`05_.../analysis_c-mu_a-c_EAM-vs-MEAM_300K.ipynb`, and
+`05_.../analysis_T-dependence_c-mu_a-x_EAM-vs-MEAM_300K-vs-600K.ipynb`.
+Three copies means three places for the convergence criterion to drift apart
+— which is precisely the bug class the criterion was written to catch.
+
+Kept as duplicated code for now on purpose: the notebooks must stay
+runnable standalone from their own directory, and a pilot session does not
+add tooling to canon unilaterally.
+
+## Suggested wording
+
+New tool (own repo, deployed to `~/bin/` Mac + cluster per the tool-card
+contract) exposing:
+- `load_mu_scan(results_dir, nevery, natt)` -> (ave, trace) long frames with
+  `mu`, `step`, `trials`, `valid`;
+- collapse detection (a_eff below a fraction of its running max) with
+  truncation;
+- `summarize(...)` -> per-mu means over a derived window plus the verdict
+  ladder from proposal 2026-07-30-0930 (crashed / empty / window-too-short /
+  noise-limited / filling / equilibrated-late / equilibrated).
+Card records the column contract of `ave.*.dat` / `trace.*.dat` as produced
+by the project's `fix ave/time` + `fix print` blocks, since that contract is
+what the loader depends on.
+
+## Designer review notes
+
+Reviewed 2026-08-02T16:20Z by session 2026-08-02-1614-designer-inbox-merge: ACCEPTED IN PRINCIPLE, left pending. Not mergeable as prose: per the tools rules (learnings.md 'Tools', ARCHITECTURE.md §6) a card documents a real installed tool, so the loader needs its own repo + code + tests deployed to ~/bin (Mac + cluster) BEFORE a card can land in canon. Needs a designer session with tool-implementation scope (or Erik builds it via Claude Code against a spec), then the card + catalog entry follow.
+
+---
+proposal_id: 2026-07-30-1015-merge-scans-one-series-per-condition
+session_id: 2026-07-30-0926-nih-harvest-notebooks
+proposed_at: 2026-07-30T10:15Z
+target_file: canon/preferences.md
+target_section: "Plot defaults"
+priority: routine
+status: merged                          # was pending
+---
+
+## Proposed rule
+
+A plot shows **one series per physical condition**, not one series per run or
+per parameter grid. Several scans of the same condition (coarse + fine mu
+windows, an original plus a longer rerun of one point) are merged into a
+single curve, with the finer/longer run superseding the overlapping points.
+Data quality is carried by marker style (filled = converged, open = not
+assured), not by splitting the curve.
+
+## Where it bit
+
+2026-07-30, Ni-H threads 03/05. The first version of the notebooks drew the
+MEAM coarse scan and the MEAM fine window as two separate series, and the
+tet-extended rerun as a third series alongside the run-01 scan it replaced.
+Erik: "separating the data into fine and the first (coarse) run does not
+provide any new results, please plot them together. use however open symbols
+if the convergence is not assured."
+
+The merge also turned out to be load-bearing rather than cosmetic: once each
+potential was one curve, it became visible that the EAM has **zero** grid
+points inside its own two-phase window at 300 K (nothing between x = 0.005
+and x = 1.000) while the MEAM has four. The apparent "MEAM transition is
+broader" result was partly an artefact of unequal sampling -- which the
+split-series plot had made easy to miss.
+
+## Suggested wording
+
+Add to the "Plot defaults" subsection:
+
+- **One series per physical condition; quality goes in the marker.** Merge
+  all scans of the same condition into a single curve, finer or longer runs
+  superseding coarser ones on shared abscissa values, and keep provenance in
+  a `src` column so any point can be traced to its run. Encode data quality
+  with marker style -- **filled = converged/assured, open = not assured** --
+  and never by drawing a second series. Erik's own words (2026-07-30):
+  "separating the data into fine and the first (coarse) run does not provide
+  any new results, please plot them together. use however open symbols if the
+  convergence is not assured."
+- **Corollary: report the sampling density of any feature you compare.** When
+  a claim rests on the *shape* of a transition (width, sharpness), print the
+  number of grid points that actually fall inside it for each curve. A curve
+  through two points that jump from x ~ 0 to x ~ 1 is evidence about the grid,
+  not about the physics.
+
+## Designer review notes
+
+Merged 2026-08-02T16:20Z by session 2026-08-02-1614-designer-inbox-merge.
+Target: canon/preferences.md 'Plot defaults'. Adopted with the sampling-density corollary and the EAM zero-points-in-window incident noted inline.
+
+---
+proposal_id: 2026-07-30-1018-exclude-runaway-branch-companion-plot
+session_id: 2026-07-30-0926-nih-harvest-notebooks
+proposed_at: 2026-07-30T10:18Z
+target_file: canon/preferences.md
+target_section: "Plot defaults"
+priority: routine
+status: merged                          # was pending
+---
+
+## Proposed rule
+
+When one branch of a dataset runs away in the plotted quantity and compresses
+the region of interest, the figure set includes a companion view with the
+runaway branch excluded -- and the excluded branch is visually marked (not
+silently dropped) wherever it IS shown.
+
+## Where it bit
+
+2026-07-30, Ni-H thread 05. The EAM overcharges into tetrahedral sites at
+high mu, reaching x = 2.51 where the physics of interest (the alpha -> beta
+transition) lives entirely below x = 1. On a full-range c(mu) axis the
+transition occupies the bottom third of the panel and the two potentials'
+shapes cannot be compared at all. Erik: "Please provide additional plots that
+exlude mu / concentraiton values where the tetrahedral sites get filled, so
+that one can actually see the transition regime better."
+
+## Suggested wording
+
+Add to the "Plot defaults" subsection:
+
+- **Give the region of interest its own axis.** If part of the data runs away
+  in the plotted quantity (here: tetrahedral overcharge, x -> 2.5, against a
+  transition at x < 1), add a companion figure restricted to the regime the
+  question is about, using a named cut constant (e.g. `X_TET = 1.05`) so the
+  same threshold is applied everywhere and is visible in the code. A
+  plateau-aligned zoom (abscissa minus each curve's own plateau) is the
+  version that compares shapes across curves whose absolute reference differs.
+  Where the runaway branch is shown, mark it distinctly (separate colour) so
+  it cannot be misread as belonging to the main regime, and never drop it
+  without saying so in the caption.
+
+## Designer review notes
+
+Merged 2026-08-02T16:20Z by session 2026-08-02-1614-designer-inbox-merge.
+Target: canon/preferences.md 'Plot defaults'. Adopted as proposed (named cut constant, plateau-aligned zoom, distinct colour for the runaway branch).
+
+---
+proposal_id: 2026-07-30-1100-match-mc-cadence-not-just-budget
+session_id: 2026-07-30-0926-nih-harvest-notebooks
+proposed_at: 2026-07-30T11:00Z
+target_file: canon/lessons.md
+target_section: new lesson L<next>
+priority: high
+status: merged                          # was pending
+---
+
+## Proposed rule
+
+When two MC methods are compared inside MD, match the **attempts per MD step**,
+not merely the total attempts per job. Matching only the total budget by
+running one method for more MD steps changes how much the MD relaxes between
+attempts, which is itself a variable.
+
+## Where it bit
+
+2026-07-29/30, Ni-H thread 03. Run 03 was designed as a "matched budget"
+comparison: `fix gcmc 100 250` (2.5 attempts/MD step) x 400k steps = 1e6
+attempts, against `fix mc/sites 20 1000` (50 attempts/MD step) x 20k steps =
+1e6 attempts. Equal totals, but a factor 20 difference in cadence -- so the
+gcmc run gave the lattice 20x longer to relax between exchange attempts,
+which flatters random-insertion acceptance, and left the MD-step axis
+meaningless across methods. Erik caught it on reading the two inputs
+side by side: "To be able to have a proper comparison, they should have the
+same number of attempts per the same number of MD steps!"
+
+Consequence for interpretation, which is the part worth keeping: cadence
+changes the *rate of convergence*, not the equilibrium distribution, so a
+cadence mismatch does NOT bias a chemical-potential shift measured between
+two EQUILIBRATED points. It biases (i) any cost/efficiency comparison and
+(ii) any quantity read off points that never equilibrated -- which is exactly
+what run 03's Delta_mu bound was.
+
+## Suggested wording
+
+- **L<N>: match the MC cadence, not the MC budget.** Any comparison of two MC
+  move sets embedded in MD fixes the same `attempts per MD step` for both, and
+  preferably the same total step count too, so the two runs are comparable
+  step-for-step and attempt-for-attempt with the move type as the only
+  difference. Matching totals while letting cadence differ silently varies the
+  amount of MD relaxation per attempt. State in the run record which quantity
+  is matched. Corollary: a cadence mismatch is harmless for equilibrium
+  observables and fatal for cost/efficiency observables -- so before quoting a
+  cost ratio, check the cadence line of both inputs, not the budget arithmetic
+  in the run notes.
+
+## Designer review notes
+
+Merged 2026-08-02T16:20Z by session 2026-08-02-1614-designer-inbox-merge.
+Target: canon/lessons.md. Assigned L35, incl. the equilibrium-vs-cost corollary and the 2026-07-30 class fix (gcmc cadence matched to mc/sites).
+
+---
+proposal_id: 2026-07-30-1102-sshfs-new-files-invisible-in-listings
+session_id: 2026-07-30-0926-nih-harvest-notebooks
+proposed_at: 2026-07-30T11:02Z
+target_file: canon/clusters.yaml
+target_section: cmmg quirks (extend the existing sshfs_default_options_show_stale_views entry)
+priority: routine
+status: merged                          # was pending
+---
+
+## Proposed rule
+
+Extend the known sshfs stale-view quirk: files newly CREATED through the mount
+can be absent from `ls` while being fully readable by exact path. Verify writes
+by exact-path `stat`/`md5sum`, never by a directory listing, and never use
+`rsync`/`find`/globs to copy freshly written files off the mount.
+
+## Where it bit
+
+2026-07-30: 18 new .in/.slurm files were written into six new run directories
+through the cmmg mount. Every file was readable by exact path with the correct
+size and md5, and the cluster side was fine -- but `ls` on each directory
+returned `total 0`. Because `rsync --include=... ` and `find` both enumerate
+via the directory listing, the mirror-to-Mac step silently copied ZERO files
+and reported success. Copying by explicit filename worked immediately.
+
+This is the same L15 root cause as the read-side stale views already recorded,
+but the failure mode is the opposite direction (writes) and much quieter: a
+read-side stale view looks like missing data and gets noticed, whereas a
+write-side one looks like a successful no-op.
+
+## Suggested wording
+
+Extend the `sshfs_default_options_show_stale_views` quirk note with:
+
+    # Write-side variant (2026-07-30): files just CREATED through the mount
+    # may not appear in `ls` for some time, though they are complete and
+    # readable by exact path. Therefore:
+    #   - verify writes with `stat`/`md5sum` on the full path, not `ls`;
+    #   - never enumerate freshly written files with rsync/find/globs -- they
+    #     will silently copy nothing and exit 0;
+    #   - copy by explicit filename when mirroring a just-written run dir.
+
+## Designer review notes
+
+Merged 2026-08-02T16:20Z by session 2026-08-02-1614-designer-inbox-merge.
+Target: canon/clusters.yaml cmmg quirks. Extended the `sshfs_default_options_show_stale_views` quirk comment with the write-side variant as proposed.
+
+---
+proposal_id: 2026-07-30-1145-verify-writes-dont-infer-them
+session_id: 2026-07-30-0926-nih-harvest-notebooks
+proposed_at: 2026-07-30T11:45Z
+target_file: canon/learnings.md
+target_section: "Process"
+priority: high
+status: merged                          # was pending
+---
+
+## Proposed rule
+
+A file write is reported as done only after it has been read back. If the
+verification step could not run, the write is reported as UNVERIFIED -- never
+as "almost certainly completed" on the basis of where a script died.
+
+Corollary for this mount: never run bulk checksum/stat sweeps over the sshfs
+mount. They are what wedges it.
+
+## Where it bit
+
+2026-07-30. A 21-file md5 sweep across the cmmg sshfs mount timed out and left
+the device bridge unresponsive (even `echo` failed for several minutes). The
+same call had earlier generated run 11's three files, so I reasoned that since
+generation precedes verification in the script, the files "almost certainly
+completed" -- while correctly hedging that I could not confirm it. They had
+not: Erik pasted the run-11 probe command and got
+`-bash: cd: .../11_EAM-...: No such file or directory`, wasting a round trip
+in the middle of a submit sequence.
+
+Two distinct errors worth separating:
+1. **Reasoning about where a script died instead of checking.** The hedge was
+   right, the probability estimate was wrong, and the estimate is what he
+   acted on. "Unverified" is the whole of what was known.
+2. **The sweep itself.** Verification does not require checksumming everything;
+   spot-checking the files just written is enough and does not risk the mount.
+
+## Suggested wording
+
+Add to the "Process" subsection:
+
+- **Verify writes, do not infer them.** Read back what you wrote -- size or
+  checksum on the files you actually touched -- before reporting a write as
+  complete. If the check cannot run (bridge down, mount stale, call timed out),
+  say **UNVERIFIED** and name what needs confirming; do not translate "the
+  write came earlier in the script than the crash" into a confidence estimate.
+  A hedge attached to a wrong probability still sends the user down the wrong
+  path.
+- **No bulk sweeps over the sshfs mount.** Checksumming or stat-ing tens of
+  files across the mount can hang it and take the whole device bridge with it
+  (2026-07-30: 21 files was enough). Spot-check the files just written, one or
+  two per directory, and prefer `wc -c` over `md5sum` for large ones.
+
+## Designer review notes
+
+Merged 2026-08-02T16:20Z by session 2026-08-02-1614-designer-inbox-merge.
+Target: canon/learnings.md 'Process'. Adopted as two bullets (verify-writes / no-bulk-sweeps) with cross-ref to the clusters.yaml write-side quirk.
