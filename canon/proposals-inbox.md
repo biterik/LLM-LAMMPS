@@ -775,6 +775,20 @@ what the loader depends on.
 
 Reviewed 2026-08-02T16:20Z by session 2026-08-02-1614-designer-inbox-merge: ACCEPTED IN PRINCIPLE, left pending. Not mergeable as prose: per the tools rules (learnings.md 'Tools', ARCHITECTURE.md §6) a card documents a real installed tool, so the loader needs its own repo + code + tests deployed to ~/bin (Mac + cluster) BEFORE a card can land in canon. Needs a designer session with tool-implementation scope (or Erik builds it via Claude Code against a spec), then the card + catalog entry follow.
 
+Second review 2026-08-20 by session 2026-08-20-1145-cluster-status-sweep:
+CONFIRMED, still pending, same reasoning -- canon holds cards, not code, and
+the tool does not exist. One BLOCKING detail to settle before anyone builds it,
+which was not known at the first review: the card must record the column
+contract of `ave.*.dat` / `trace.*.dat`, and that contract CHANGED during the
+2026-08-05 harvest -- 7- and 8-column schemas are both in circulation and are
+handled by `nih_loaders.py`'s RUNS registry. Pin the schema first, or the tool
+inherits the ambiguity it is meant to remove. Also fold in the collapse
+GUARD BAND fix from that harvest (the detector lagged by one block-average
+window and one task published a contaminated mean as clean) -- that is the
+strongest single argument for having one implementation instead of three.
+Recommend opening it as its own designer+dev session with `nih_loaders.py` as
+the starting point rather than a green-field build.
+
 ---
 proposal_id: 2026-07-30-1015-merge-scans-one-series-per-condition
 session_id: 2026-07-30-0926-nih-harvest-notebooks
@@ -1040,3 +1054,1657 @@ Add to the "Process" subsection:
 
 Merged 2026-08-02T16:20Z by session 2026-08-02-1614-designer-inbox-merge.
 Target: canon/learnings.md 'Process'. Adopted as two bullets (verify-writes / no-bulk-sweeps) with cross-ref to the clusters.yaml write-side quirk.
+
+---
+proposal_id: 2026-08-02-1900-fix-group-semantics-of-global-counter-fixes
+session_id: 2026-08-02-1647-ingest-eam-dislocs-ni-cu
+proposed_at: 2026-08-02T19:00Z
+target_file: canon/lessons.md
+target_section: new lesson L<N>
+priority: routine
+status: merged
+---
+
+## Proposed rule
+
+Before applying any LAMMPS fix that maintains global counters or
+targets (concentrations, species counts, collective constraints) to a
+GROUP other than `all`, verify from the docs — and, if the docs are
+silent, from the source — that the subgroup case is actually
+implemented consistently. "Parses cleanly and echoes its parameters"
+is not evidence that it is.
+
+## Where it bit
+
+EAM-DISLOCS-Ni-Cu, VCD90-T300-c031 v1-v5 (2026-04-08..13): `fix
+interior sgcmc ... variance kappa target` silently produced wrong
+physics — fix_sgcmc.cpp counts species over the fix group but scales
+the variance-constraint targets by atom->natoms, so with a frozen
+pure-Ni boundary excluded from the group, the ~27k boundary Ni atoms
+read as a Ni deficit and the outer VC test vetoed every Ni->Cu swap
+(e^-19 already at kappa=200). Five run campaigns and a kappa sweep
+chased "kappa too weak" for a bug that no kappa can cure; the doc page
+gives no warning and every doc example uses group `all`. Diagnosed
+2026-08-02 (thread 02_VCSGC-VARIANCE-CONSTRAINT-GROUP-BUG); root cause
+confirmed at source level. Upstream LAMMPS issue worth filing.
+
+## Suggested wording
+
+**Rule:** any fix that maintains a global counter, concentration, or
+collective constraint (e.g. `fix sgcmc variance`, widom/gcmc-family
+bookkeeping) is verified for group-consistency before being used with a
+group other than `all`: check the doc page for explicit subgroup
+semantics; if silent, check the source for mismatched scopes (group-
+filtered counts vs `atom->natoms`-scaled targets is the signature).
+Fail-late class: the input parses, the fix echoes its parameters, and
+the error appears only as physically wrong equilibria — no lint can
+catch it; the check belongs in design-time review whenever `fix <ID>
+<group>` has `<group> != all` and the fix doc mentions concentrations
+or targets.
+
+**Where it bit:** EAM-DISLOCS-Ni-Cu VC-SGC v1-v5 (see thread
+02_VCSGC-VARIANCE-CONSTRAINT-GROUP-BUG for the full mechanism and the
+patch points in fix_sgcmc.cpp).
+
+**Target:** style/lammps.md pre-flight cross-ref.
+
+## Designer review notes
+
+Merged 2026-08-20 as **lessons.md L38**, wording essentially as proposed. Kept
+the fail-late framing and the `atom->natoms`-vs-group-count signature verbatim --
+that sentence is what makes the class recognisable in a new fix. Cross-reference
+added from style/lammps.md 1.9 (preconditions clause, "does it behave the same
+for a group other than `all`?").
+
+---
+proposal_id: 2026-08-03-0926-probe-task-count-scales-with-cell
+session_id: 2026-08-03-0905-ni-dislocs-multipot
+proposed_at: 2026-08-03T09:26Z
+target_file: canon/learnings.md
+target_section: "Cluster discipline" -- amend the "Probe before production" entry
+priority: routine
+status: merged
+---
+
+## Proposed rule
+
+The probe's task count is not fixed at 2. It is the smallest count that keeps
+the probe under a few minutes for THIS cell and THIS potential, with a floor of
+2 (never 1) so the parallel decomposition is still exercised. State the chosen
+count and the reason in the run's thread.md.
+
+## Where it bit
+
+2026-08-03, ni-dislocs-eam-meam-ace / 01_SCALE-AND-RELAX-0K. The canonical
+recipe says "2 MPI tasks (catches parallel-decomp bugs), 5-min walltime". The
+cells here are 5.7e5 atoms and one of the potentials is ACE at a measured
+1.86e-4 core-s per atom-step. On 2 tasks a single FIRE iteration would take
+~530 s, so a 10-iteration probe could not finish inside any sane probe
+walltime, and the 5-min cap would be violated by the recipe itself. The probes
+were written with 32 tasks (`processors 2 2 8`), which still exercises a 3D
+decomposition and lands each probe at seconds-to-tens-of-seconds.
+
+The underlying quantity the "2 tasks" number was standing in for is "cheap
+enough that a bad probe costs nothing", and that is a function of
+N_atoms x cost_per_atom_step, not a constant.
+
+## Suggested wording
+
+In `canon/learnings.md`, "Cluster discipline", replace
+
+    2 MPI tasks (catches parallel-decomp bugs), 5-min walltime, same
+    partition as production.
+
+with
+
+    The smallest task count that keeps the probe inside a few minutes for
+    this cell and this potential -- floor of 2, never 1, so the parallel
+    decomposition is still exercised. For small cells that is 2; for
+    ~1e5-1e6-atom cells or an ML potential it is tens of tasks. Pick it
+    from N_atoms x (measured or estimated) cost per atom-step, and record
+    the count and the reason in thread.md. Walltime cap stays short
+    (<= 20 min); same partition as production.
+
+## Designer review notes
+
+Merged 2026-08-20 into learnings.md "Cluster discipline". Accepted in full; the
+replacement wording is the proposal's, plus the ACE arithmetic (530 s per FIRE
+iteration on 2 tasks) kept inline because the number is what makes the point.
+
+---
+proposal_id: 2026-08-03-0927-minimize-probes-report-loop-time
+session_id: 2026-08-03-0905-ni-dislocs-multipot
+proposed_at: 2026-08-03T09:27Z
+target_file: canon/learnings.md
+target_section: "Cluster discipline" -- amend the "Probe before production" pass criteria
+priority: routine
+status: merged
+---
+
+## Proposed rule
+
+For a probe whose work is a `minimize` rather than a `run`, the pass criterion
+and the L26 walltime-calibration source is the `Loop time of X on N procs for M
+steps` line, not a `Performance:` line. LAMMPS emits `Performance:` only from
+`run`.
+
+## Where it bit
+
+2026-08-03, ni-dislocs-eam-meam-ace / 01_SCALE-AND-RELAX-0K. The three probes
+are 10-iteration FIRE minimizations. The canonical probe pass criteria require
+"a `Performance:` line for each `run` block", which these probes cannot
+produce -- a probe that behaved perfectly would have been scored as failed.
+Confirmed against the reference run
+`DISLOCS-Ni-Cu/RELAX-D90/log.lammps` (lammps/250722): the minimize block ends
+with `Loop time of 18.4291 on 128 procs for 733 steps with 568606 atoms` and
+the "Minimization stats" block, and no `Performance:` line appears anywhere.
+
+## Suggested wording
+
+In `canon/learnings.md`, "Cluster discipline", "Probe before production",
+amend the third bullet of the pass criteria:
+
+    - emit a `Performance:` line for each `run` block, or -- where the
+      work is a `minimize` rather than a `run` -- a
+      `Loop time of X on N procs for M steps` line for each minimize
+      block. Either is the L26 walltime-calibration source; `minimize`
+      never emits `Performance:`.
+
+## Designer review notes
+
+Merged 2026-08-20 into the probe pass criteria. Accepted in full. Worth flagging
+for the record that this bug was latent, not observed: a correct probe would have
+been scored as FAILED, so it could only ever have caused a false alarm, never a
+bad production run.
+
+---
+proposal_id: 2026-08-03-0928-generic-filename-lint-false-positive
+session_id: 2026-08-03-0905-ni-dislocs-multipot
+proposed_at: 2026-08-03T09:28Z
+target_file: canon/style/lammps.md
+target_section: "1.2 Generic-filename check (L3, L20)"
+priority: routine
+status: merged
+---
+
+## Proposed rule
+
+Anchor the generic-filename lint patterns at both ends so a descriptively
+prefixed filename does not trip it. As written, the check flags the style
+guide's own canonical idiom.
+
+## Where it bit
+
+2026-08-03, ni-dislocs-eam-meam-ace / 01_SCALE-AND-RELAX-0K pre-flight. Every
+one of the six new inputs was flagged by the 1.2 grep on the string
+`Ni-disloc-DCHAR-relax0K-${POTENTIAL_LABEL}-final-snapshot.dump`. The regex
+opens with `(^|[^A-Za-z])`, which a leading `-` satisfies, so any
+`<descriptive-prefix>-final-snapshot.dump` matches. Section 3 of the same file
+("Descriptive-naming vector") gives
+`Ni-fcc-${POTENTIAL_LABEL}-final-snapshot.dump` as the recommended form -- the
+guide fails its own lint. Same reasoning applies to `relaxation-log.dat`,
+`a0-result.txt` and `data.lammps` in that alternation. Three sessions of
+"is this a real hit or the known false positive?" is exactly the friction the
+mechanical lint exists to remove.
+
+## Suggested wording
+
+In `canon/style/lammps.md` section 1.2, replace the grep with
+
+    grep -E '(^|[[:space:]/])(dump\.out|restart\.data|log\.lammps|a0-result\.txt|relaxation-log\.dat|final-snapshot\.dump|tmp\.|out\.dat|data\.lammps)([[:space:]]|$)' <input>
+
+and add below it:
+
+    The leading and trailing anchors are load-bearing: the offence is a
+    filename that IS the tutorial default, not one that ends with it.
+    `Ni-fcc-Pezold-EAM-final-snapshot.dump` is correct and must not be
+    flagged; a bare `final-snapshot.dump` must be.
+
+Mirror the same change in `canon/templates/lint-lammps-input.sh`.
+
+## Designer review notes
+
+Merged 2026-08-20 into style/lammps.md 1.2. **Scope reduced:** the proposal asked
+to mirror the change in `templates/lint-lammps-input.sh`, but the script ALREADY
+carried the anchored form `(^|[[:space:]/="])...([[:space:]"]|$)`. Only the style
+guide was stale. No script change made. The divergence is itself the finding --
+the executable and its documentation had drifted, and three sessions trusted the
+documented (broken) grep over the working one.
+
+---
+proposal_id: 2026-08-03-0938-probe-exemption-when-production-is-cheaper
+session_id: 2026-08-03-0905-ni-dislocs-multipot
+proposed_at: 2026-08-03T09:38Z
+target_file: canon/learnings.md
+target_section: "Cluster discipline" -- add an exemption clause to "Probe before production"
+priority: routine
+status: merged
+---
+
+## Proposed rule
+
+The probe requirement is waived when the production job is itself no more
+expensive than its own probe would be -- single node, few cores, seconds of
+runtime. In that regime the production job IS the probe: a bad input fails in
+seconds having consumed nothing a probe would have saved. The waiver is
+recorded in thread.md with the numbers that justify it, never taken silently.
+
+## Where it bit
+
+2026-08-03, ni-dislocs-eam-meam-ace / 02_FISCHER-A0-AT-0K / 01_MIN-FISCHER-EAM:
+a 4000-atom fcc box, 1 core, `s.cmmg`, expected ~1-2 s (the two identical runs
+in ni-a0-cij-eam-meam thread 01 took 1 s and 2 s). A probe would occupy the
+same partition and the same single queue slot as the production, so it would
+strictly add one submit-wait-inspect round trip and remove nothing.
+
+The rule as written is unconditional, so the honest options were "waste a round
+trip" or "deviate silently". Neither is what the rule is for: its stated
+purpose is that guess-and-ship LAMMPS-syntax bugs must not burn a real
+allocation. Where there is no allocation to burn, the purpose is already met.
+
+Note this is the same shape as the sibling proposal
+2026-08-03-0926-probe-task-count-scales-with-cell: both come from the probe
+recipe being written around one implicit cell size and cost, and both are
+fixed by making the cost explicit rather than the task count.
+
+## Suggested wording
+
+In `canon/learnings.md`, "Cluster discipline", append to the "Probe before
+production" entry:
+
+    **Exemption -- production cheaper than its own probe.** Where the
+    production job is single-node, few-core and seconds long (a bulk
+    baseline minimization, a capability check, a small static
+    calculation), no separate probe is required: the production job is
+    the probe. The test is whether a probe would occupy a smaller
+    allocation than the production -- if it would not, it buys nothing.
+    Record the waiver and the numbers behind it in the run's thread.md;
+    an unrecorded skip is still a violation. This exemption never applies
+    to a multi-node job, an array, or anything on `p.cmmg`.
+
+## Designer review notes
+
+Merged 2026-08-20 into the "Probe before production" entry. Accepted in full,
+including the never-applies clause (multi-node, arrays, p.cmmg) -- without it the
+exemption is the kind that grows.
+
+---
+proposal_id: 2026-08-03-1002-force-norm-reporting-convention
+session_id: 2026-08-03-0905-ni-dislocs-multipot
+proposed_at: 2026-08-03T10:02Z
+target_file: canon/preferences.md
+target_section: new section "Convergence and force-norm reporting" (after "Computation defaults")
+priority: routine
+status: merged
+---
+
+## Proposed rule
+
+Never report a bare `fnorm`. Every place a convergence state is stated -- input
+header, thermo columns, thread.md, run.yaml, chat -- gives BOTH `fnorm/N` and
+`fnorm/sqrt(3N)` and names the definition of `fnorm` it is normalizing. The
+default stopping criterion for a 0 K relaxation is `fnorm/sqrt(3N) < 1e-8
+eV/A`, written into the input as `ftol = 1e-8 * sqrt(3N)` computed from the
+atom count, never hard-coded per cell.
+
+## Where it bit
+
+2026-08-03, ni-dislocs-eam-meam-ace. The pilot wrote "ftol 1e-3 is ~7.6e-7
+eV/A per-atom RMS" in thread.md and run.yaml. The arithmetic was right for
+`fnorm/sqrt(3N)` but the phrase "per-atom RMS" reads as `fnorm/sqrt(N)`, which
+is sqrt(3) larger, and Erik reasonably read it as `fnorm/N`, which is 1300x
+smaller. Three plausible readings of one sentence, and only the raw fnorm was
+actually in the log.
+
+Checked against the docs (docs.lammps.org/minimize.html, 2026-08-03):
+
+> "the 2-norm (length) of the global force vector is less than the *ftol*"
+> "the specified force tolerance *ftol* is in force units, since it is the
+> length of the global force vector for all atoms, e.g. a vector of size 3N
+> for N atoms."
+
+so `fnorm = sqrt(sum_i sum_a f_ia^2)` and it is EXTENSIVE. That is what makes a
+bare number meaningless across cells: the same physical convergence gives
+`fnorm = 1e-3` at 5.7e5 atoms and `fnorm = 8e-5` at 4000 atoms.
+
+The choice of 1e-8 on `fnorm/sqrt(3N)` is Erik's (2026-08-03), picked over
+`fnorm/N < 1e-8` precisely because `fnorm/N` is not size-independent: it falls
+as 1/sqrt(N), so a fixed `fnorm/N` target silently allows the per-atom force to
+grow as sqrt(N) -- 4.4e-6 eV/A in the 5.7e5-atom dislocation cells against
+3.7e-7 eV/A in the 4000-atom bulk cell, from the same number.
+
+## Suggested wording
+
+New section in `canon/preferences.md`, after "Computation defaults":
+
+    ## Convergence and force-norm reporting
+
+    - **`fnorm` is extensive; never report it bare.** LAMMPS `fnorm` is the
+      2-norm (length) of the GLOBAL force vector, a vector of size 3N for N
+      atoms: `fnorm = sqrt(sum_i sum_a f_ia^2)`, and `ftol` is compared
+      directly against it in force units. A bare fnorm cannot be compared
+      between cells of different size.
+    - **Always report both normalizations, and name the definition.** Every
+      LAMMPS input carries a header block defining fnorm and both
+      normalizations; every `thermo_style` in a minimization carries
+      `v_fnorm_per_atom` (= fnorm/N) and `v_fnorm_per_dof`
+      (= fnorm/sqrt(3N)) alongside the raw `fnorm`; every thread.md,
+      run.yaml and chat statement about convergence quotes both. Erik's
+      words (2026-08-03): *"ALWAYS state forcenorm/natoms and state that
+      you are using this definition."*
+    - **Default 0 K stopping criterion: `fnorm/sqrt(3N) < 1e-8 eV/A.**
+      `fnorm/sqrt(3N)` is the RMS force per degree of freedom and is the
+      only one of the three that is size-independent. Write it into the
+      input as
+
+          variable n_atoms      equal count(all)
+          variable sqrt_3N      equal sqrt(3.0*v_n_atoms)
+          variable FTOL_PER_DOF equal 1.0e-8
+          variable ftol_global  equal v_FTOL_PER_DOF*v_sqrt_3N
+          minimize 0.0 ${ftol_global} <maxiter> <maxeval>
+
+      so a rendered-per-cell input gets the right value without editing.
+      Tighten when the science demands it; loosen only on the record.
+    - **Cap `maxiter` at ~15-20x the expected iteration count**, not at
+      800000. A minimization that runs into the walltime cap never reaches
+      its `write_data` and loses everything; one that hits `maxiter` writes
+      the structure and says so in the `Stopping criterion` line.
+
+## Designer review notes
+
+Merged 2026-08-20 as a new preferences.md section "Convergence and force-norm
+reporting", placed after "Computation defaults" as proposed. Two designer notes:
+(a) the ban on the phrase "per-atom RMS" is stated explicitly, since the incident
+was an ambiguity rather than an arithmetic error; (b) the `maxiter` bullet
+CONTRADICTS the `800000` iteration cap in "Computation defaults" above it, so the
+new text says so in-line rather than leaving two live numbers in one file. A
+future designer pass should reconcile them properly.
+
+---
+proposal_id: 2026-08-03-1003-output-file-extensions
+session_id: 2026-08-03-0905-ni-dislocs-multipot
+proposed_at: 2026-08-03T10:03Z
+target_file: canon/preferences.md
+target_section: new subsection under "Directory naming" -> rename to "Directory and file naming"
+priority: routine
+status: merged
+---
+
+## Proposed rule
+
+Trajectory and snapshot files written by `dump` end `.dump`. Structure files
+written by `write_data` end `.lmps`. This applies to structures produced by
+external tools too (scalers, converters, builders) whenever the product is a
+LAMMPS data file.
+
+## Where it bit
+
+2026-08-03, ni-dislocs-eam-meam-ace. The pilot used `.data` for every
+`write_data` output and for the twelve rescaled cells, following the extension
+used in ni-a0-cij-eam-meam. Erik: *"please have dumps called .dump and
+writeouts *.lmps"*. His own files already follow this -- `EAM-DISLOCS-Ni-Cu`
+holds `d90_Ni-Mishin04_x-101_y1-21_z111_25x10x25.lmps` and
+`fire_d90_...lmps` -- so `.data` was the pilot importing a convention Erik does
+not use.
+
+Worth noting the third case in the same tree: the dcreator-built cells carry
+`.fcc`, which is a LAMMPS data file with a misleading extension. Those are
+pre-existing inputs and are not renamed; the rule governs what we write.
+
+## Suggested wording
+
+In `canon/preferences.md`, rename the "Directory naming" section to
+"Directory and file naming" and append:
+
+    - **Extensions: `.dump` for dumps, `.lmps` for write_data.** Anything
+      written by a `dump` command ends `.dump`; anything written by
+      `write_data`, or by an external tool whose product is a LAMMPS data
+      file, ends `.lmps`. Not `.data`, not `.lammps`, not `.fcc`. Set
+      2026-08-03 (Erik: *"please have dumps called .dump and writeouts
+      *.lmps"*), matching his own EAM-DISLOCS-Ni-Cu files. Pre-existing
+      files keep their names; the rule governs what we write.
+
+## Designer review notes
+
+Merged 2026-08-20; "Directory naming" renamed to "Directory and file naming".
+Added a pointer that this supersedes the `.data` spelling still used in the
+"Output style" section's parenthetical -- that section was not rewritten, so the
+older spelling survives there and should be cleaned up next pass.
+
+---
+proposal_id: 2026-08-04-1710-sites-voronoi-metric-volume-is-the-probe-cell
+session_id: 2026-08-03-1401-nih-at-dislocs-design
+proposed_at: 2026-08-04T17:10Z
+target_file: canon/learnings.md
+target_section: "Tool behaviour" (mc/sites subsection)
+priority: routine
+status: merged
+---
+
+## Proposed rule
+
+`compute sites/voronoi ... metric volume` returns the Voronoi cell volume of a
+**probe particle inserted at the site**, NOT the volume of the interstice
+polyhedron. It is nearly constant across an fcc lattice and cannot distinguish
+octahedral from tetrahedral sites. Classify on clearance AND coordination
+instead.
+
+## Where it bit
+
+2026-08-04, ni-h-at-dislocs-eam-meam / thread 01. The run was designed around
+the textbook interstice volumes, `V_oct = a^3/6 = 7.29 A^3` against
+`V_tet = a^3/24 = 1.82 A^3`, a factor 4, and the post-processing classifier was
+written to split on that. It put **100 % of the probe's sites in the "oct"
+class**, which was the first symptom.
+
+Measured over all 953534 sites of the relaxed d90 cell (a = 3.52401 A), the
+column spans only **5.35 .. 6.04 A^3** -- a 12 % total range -- and the two
+populations OVERLAP: oct mean 5.47 (max 5.92), tet mean 5.79 (min 5.58). That
+is the right answer for what the compute actually reports: the Voronoi cell of
+a probe at an interstice is bounded by the surrounding host atoms, and in a
+close-packed lattice every interstice has a similar amount of room around it.
+The interstice polyhedron volume is a different quantity and the compute never
+claimed to return it.
+
+What does separate the families, on the same catalogue:
+
+| discriminator | oct | tet | ideal |
+|---|---|---|---|
+| clearance | 1.725-1.763 A (33.3 %) | 1.500-1.538 A (66.2 %) | a/2 = 1.7620, a*sqrt(3)/4 = 1.5259 |
+| coordination (`coord 4 3.0`) | 6 | 16 | integer, cleanest |
+| rigid `E_ins` far field | -2.0485 eV | -1.5037 eV | 0.549 eV apart |
+
+Requiring clearance AND coordination to agree reproduces the 1:2 oct:tet ratio
+of fcc to 33.31 % : 65.92 % and leaves 0.77 % core-distorted -- which is the
+population the project is about.
+
+## Suggested wording
+
+In `canon/learnings.md`, under the `fix mc/sites` / `compute sites/voronoi`
+subsection:
+
+    - **`metric volume` is the PROBE's Voronoi cell, not the interstice
+      polyhedron.** It measures how much room a particle placed at the site
+      would own, bounded by the surrounding host atoms -- not the geometric
+      volume of the octahedron or tetrahedron. In fcc it is nearly constant
+      (5.35-6.04 A^3 at a = 3.524 A) and the oct and tet populations overlap,
+      so it CANNOT classify sites. Do not design a classifier around the
+      textbook a^3/6 vs a^3/24 factor 4; that factor is not what this column
+      reports. Classify on **clearance AND coordination**, requiring both to
+      agree: oct = clearance ~ a/2 and coord 6, tet = clearance ~ a*sqrt(3)/4
+      and coord 16, everything else core-distorted. Verified 2026-08-04 on
+      953534 sites (ni-h-at-dislocs-eam-meam thread 01); the check that it is
+      right is that a perfect-lattice region returns the fcc 1:2 ratio.
+
+## Designer review notes
+
+Merged 2026-08-20. learnings.md had no "Tool behaviour" section, so one was
+created under "## Tools" as `### Tool behaviour -- fix mc/sites / compute
+sites/voronoi`. Kept the fcc 1:2 ratio as the stated self-check: a rule that
+comes with its own falsifier is worth more than one that does not.
+
+---
+proposal_id: 2026-08-04-1712-check-the-background-shape-not-the-fit-quality
+session_id: 2026-08-03-1401-nih-at-dislocs-design
+proposed_at: 2026-08-04T17:12Z
+target_file: canon/lessons.md
+target_section: new lesson (analysis / post-processing)
+priority: routine
+status: merged
+---
+
+## Proposed rule
+
+Before subtracting a background and calling the remainder a segregation,
+binding or excess energy, establish the background's **shape** from the
+physics of the cell -- not from which functional form happens to fit. A fit
+residual comparable in size to the effect you are about to measure is a failed
+model, not a tolerance.
+
+## Where it bit
+
+2026-08-04, ni-h-at-dislocs-eam-meam / thread 01, the 0 K H insertion map on a
+d90 edge dislocation (`boundary p p s`, three fixed (111) layers per z face).
+
+`E_ins(z)` in the far field rose monotonically across the 140 A map zone. The
+pilot fitted a straight line, got +32.7 meV (oct) / +43.4 meV (tet) with a
+residual rms of 1.18 / 1.54 meV, and wrote it up as *"the plastic bending of a
+free-standing slab containing one edge dislocation"* -- into thread.md,
+project.md and the notebook. Erik: *"WTF! The slab should not be bent! the
+boundary conditions (upper and lower boundary fixed in z, x,y periodic) should
+not allow any bending! please find out where this 'bending' - if it is real -
+is coming from!"*
+
+He was right, and the dump files settled it in three measurements:
+
+- per-atom Ni energy across the same window: `dPE/dz = +3.8e-7 eV/A`, i.e.
+  **0.05 meV over 140 A**. A bent beam stores elastic energy growing away from
+  the neutral plane. There is none.
+- atoms per (111) layer: **4646 above the glide plane against 4600 below**,
+  exactly +1.000 %, against `b/lx = 2.4919/250.431 = 0.995 %`. One extra
+  atomic plane in the same fixed periodic `lx` -- the extra half-plane. The
+  upper half is compressed in x; the lower half is not. A STEP.
+- (111) interlayer spacing: 2.03174 A below, 2.03725 A above, each flat to
+  1e-5 A, one jump over ~8 A.
+
+The real `E_ins(z)` is an odd, **saturating** function about the glide plane:
+`A(1-exp(-d/lambda))` fits with `2A = 39.1 meV`, `lambda = 53.0 A`, residual
+rms **0.079 meV** -- fifteen times better than the straight line. Inside the
+map zone the profile only reaches ~24 meV of that asymptote, so a straight line
+through the still-rising part looks excellent and is still the wrong model.
+
+Two things made the error survive as long as it did:
+
+1. The **flat Ni energy was read as "no strain"**, so a strain step was never
+   considered. It is not: elastic energy is quadratic in strain, so a `+-eps`
+   step costs the same on both sides; `E_ins` and interlayer spacing are linear
+   in strain and do show it. Flat energy and a large strain step are perfectly
+   consistent.
+2. The **residual was not weighed against the measurement**. 1.2 meV rms and
+   2.2 meV maximum sound small, but the quantity being extracted afterwards was
+   a 5 meV "bulk-like" criterion. The residual WAS the signal.
+
+The fix was to stop fitting: the background is now the median of the same site
+family at the same z, far from the defect, on a 0.5 A z grid. Non-parametric,
+so whatever shape the field has is removed exactly. Far-field flatness went
+from 1-2 meV of leftover structure to 0.15-0.34 meV; the reach at 2 meV went
+from unmeasurable to r = 102 A. The headline trap depth moved by 0.4 meV, so
+the science conclusion never depended on it -- but the tail analysis did, and
+the wrong mechanism was in three files and a notebook for a day.
+
+## Suggested wording
+
+In `canon/lessons.md`, as a new numbered lesson:
+
+    L<N>. **Subtract the right background SHAPE, and never let a good fit
+    stand in for a mechanism.** Before calling anything a segregation,
+    binding or excess energy, ask what the cell's boundary conditions and
+    defect content *require* the background to look like, and check that
+    prediction against the raw geometry -- atoms per layer, layer spacings,
+    per-atom energy profiles -- not just against how well a polynomial
+    fits. Two specific traps, both hit on 2026-08-04
+    (ni-h-at-dislocs-eam-meam thread 01):
+    - **A straight line through the inner part of a saturating step fits
+      beautifully and means nothing.** The tell is the residual: if the fit
+      residual is comparable to the effect you intend to measure next
+      (there, 2.2 meV maximum against a 5 meV criterion), the model has
+      failed, it is not within tolerance.
+    - **A flat per-atom energy does NOT mean zero strain.** Elastic energy
+      is quadratic in strain, so a `+-eps` step is invisible in the energy
+      while being fully visible in any quantity that is linear in strain
+      (interstitial insertion energies, layer spacings, per-atom stress).
+      Read the stress or the geometry, not the energy, when asking whether
+      a cell is strained.
+    Prefer a **non-parametric background** -- the median of the same site
+    class at the same coordinate, far from the defect -- whenever the data
+    supports one. It assumes no shape and therefore cannot invent one.
+    And when the operator says a boundary condition forbids what you just
+    reported, believe the boundary condition first and go back to the dump
+    files.
+
+## Designer review notes
+
+Merged 2026-08-20 as **lessons.md L39**. Accepted in full. The two sub-traps are
+kept as the body rather than compressed, because each is independently
+sufficient to cause the error and the second (flat energy does not mean zero
+strain) is genuinely counter-intuitive. The closing line -- believe the boundary
+condition before your own fit -- is retained verbatim.
+
+---
+proposal_id: 2026-08-04-1730-symmetric-colour-scales
+session_id: 2026-08-03-1401-nih-at-dislocs-design
+proposed_at: 2026-08-04T17:30Z
+target_file: canon/preferences.md
+target_section: new subsection "Plots and colour scales"
+priority: routine
+status: merged
+---
+
+## Proposed rule
+
+Any map, heat map or particle colouring of a **signed** quantity gets a
+**diverging colormap on a symmetric scale centred on zero**. Never a sequential
+colormap, never auto-ranged limits. If outliers would flatten the rest, clip
+the scale and say so in the title or caption.
+
+## Where it bit
+
+2026-08-04, ni-h-at-dislocs-eam-meam / thread 01, fig 3 (the H segregation map
+about a d90 edge dislocation). The pilot used `viridis_r` with
+`vmin = -max|E_seg|` and `vmax = max(0, E_seg.max())` -- neither diverging nor
+symmetric. Erik: *"I always teach my students that if they show such images,
+make sure to use symetric color scales! please do that and try to remember
+it."*
+
+The failure mode is specific and bad: an edge dislocation produces a
+**dipole** -- tension below the glide plane binds H, compression above repels
+it -- and the two lobes are nearly equal and opposite. With an asymmetric
+sequential scale, zero lands wherever the data happens to put it, the two lobes
+render in unrelated colours, and the field reads as a monopole. The physics that
+matters most in the figure is exactly the thing the colour scale destroys.
+
+Two corollaries came out of the same exchange and belong with the rule:
+
+- **State the clip.** Here the core-distorted family reaches +0.66 eV on a
+  handful of squeezed sites at the glide plane while everything of interest
+  lives inside +-0.15 eV. Letting those set the limits flattens the map;
+  clipping silently is worse. Clip at a stated percentile and put the true
+  extreme in the title.
+- **Downstream viewers do not do this for you.** OVITO's "Adjust range" returns
+  `[min, max]`, which for this data is `[-0.146, +0.662]`. Anything that writes
+  a file for OVITO/ParaView should print the symmetric range to set by hand.
+
+## Suggested wording
+
+In `canon/preferences.md`, new subsection:
+
+    ## Plots and colour scales
+
+    - **Symmetric colour scales for signed quantities, always.** A map, heat
+      map or particle colouring of anything that can be positive or negative
+      -- segregation and binding energies, stresses, displacements,
+      differences of any kind -- uses a **diverging** colormap
+      (`RdBu_r`, `coolwarm`, `bwr`) on a scale **symmetric about zero**
+      (`vmin = -v`, `vmax = +v`). Set 2026-08-04 (Erik: *"I always teach my
+      students that if they show such images, make sure to use symetric
+      color scales!"*). A sequential colormap or auto-ranged limits puts
+      zero at an arbitrary place on the bar, and a dipole field -- an edge
+      dislocation's tension/compression lobes, for instance -- then reads as
+      a monopole.
+    - **Sequential colormaps are for quantities with a physical zero** at one
+      end (concentration, density, count, |magnitude|). There, zero at the
+      bottom of the bar is the honest choice.
+    - **Clip loudly, never silently.** When a few outliers would flatten the
+      structure, clip at a stated percentile and put both the clip and the
+      true extreme in the title. Do not let outliers set the limits, and do
+      not hide that you cut them.
+    - **Print the range for external viewers.** Any script that writes a file
+      for OVITO or ParaView should print the symmetric colour range to enter,
+      because "Adjust range" in those tools returns `[min, max]` and will
+      reintroduce exactly this problem.
+
+## Designer review notes
+
+Merged 2026-08-20 -- **placement changed.** The proposal asked for a new section
+"Plots and colour scales"; preferences.md already has "## Plot defaults", and two
+sections about plotting would guarantee that a future session reads one and not
+the other. Merged into "Plot defaults" instead. Content accepted in full,
+including all three corollaries (sequential-for-physical-zero, clip loudly, print
+the range for OVITO/ParaView).
+
+---
+proposal_id: 2026-08-04-1850-verify-device-writes-by-listing-not-by-restaging
+session_id: 2026-08-03-1401-nih-at-dislocs-design
+proposed_at: 2026-08-04T18:50Z
+target_file: canon/learnings.md
+target_section: "Workflow rules" (device-bridge / mount verification)
+priority: routine
+status: merged
+---
+
+## Proposed rule
+
+Verify a write made through the Cowork device bridge by the **size and
+mtime returned by `device_list_dir`**, never by re-staging the file and
+reading the staged copy. The staged path is a session-side cache and can
+serve a snapshot hours older than the device.
+
+## Where it bit
+
+2026-08-04, ni-h-at-dislocs-eam-meam. `SESSIONS.md` was written through the
+bridge and the commit reported success. Re-staging it and grepping showed the
+session's own registration entry absent and `last_index_updated` still at its
+two-day-old value -- twice. The pilot concluded the file was being reverted by
+something on the machine (a git checkout was the hypothesis), wrote a WARNING
+to that effect into `SESSIONS.md` itself and into the project's re-entry brief,
+and told Erik to look at the repo.
+
+All of it was wrong. `device_list_dir` reported 43716 bytes with a fresh
+mtime -- byte-identical to what had been sent -- while the container-side
+staged copy was still the 39061-byte version from two days earlier. The write
+had landed correctly every time; the read was stale.
+
+The failure mode is nasty because it is silent and it inverts: a stale READ
+looks exactly like a failed WRITE, so the instinct is to re-send, and re-sending
+appears to fail again. It also cost more than the time: a false claim about the
+user's filesystem was written into two files that other sessions will read.
+
+Note this is the same class as the existing cmmg sshfs quirk
+`sshfs_default_options_show_stale_views` -- "verify with stat/wc/md5 on the full
+path, never with ls" -- one layer further out. Worth cross-referencing the two.
+
+## Suggested wording
+
+In `canon/learnings.md`, under Workflow rules:
+
+    - **Verify bridge writes by the directory listing, not by re-reading
+      the staged copy.** After `device_commit_files`, confirm with the
+      size and mtime `device_list_dir` reports for the destination path.
+      The staged path under the session's uploads directory is a cache
+      and may serve a snapshot from a previous stage of the same file --
+      so re-staging and reading it back can show old content long after
+      a correct write. A stale read is indistinguishable from a failed
+      write unless you check the listing, and the natural response
+      (re-send, re-read, see the old content again) reinforces the wrong
+      conclusion. Same class as the cmmg sshfs quirk
+      `sshfs_default_options_show_stale_views`, one layer further out.
+      Corollary: never write a claim about the user's filesystem into a
+      project or canon file on the strength of a re-read alone.
+
+## Designer review notes
+
+Merged 2026-08-20 into learnings.md "Workflow rules". Accepted in full. The
+corollary -- never write a claim about the user's filesystem on the strength of a
+re-read alone -- is the part that cost the most and is kept prominent. Note this
+was independently re-confirmed by the 2026-08-20 session, which verified every
+canon write in this batch by `stat` size/mtime rather than by re-staging.
+
+
+---
+
+## 2026-08-05-1100 — collapse detectors lag; block averages need a guard band
+
+**From** session 2026-08-05-1009-nih-harvest (pilot, ni-h-phase-diagram-eam-meam).
+**Class** analysis / convergence machinery.
+
+Any detector that fires on a *threshold crossing* of a slowly-degrading quantity is a
+lagging indicator, and any block-averaged stream derived from the same run therefore has
+at least one contaminated window BEFORE the detected event.
+
+Concrete case: thread 03 run 06, mu = -2.02. `find_collapse_step` fires when a_eff falls
+1 % below its running maximum; that happened at step 58060, one step past the run's last
+2000-step block average at 58000. Without a guard band the task passed every convergence
+test and would have published x = 0.9986 +- 0.0036 from a window that had already sagged
+from 1.00000 to 0.98846. With the guard band it reads 0.99992 +- 0.00012 and is correctly
+flagged crashed — a 4 meV-scale change in a quantity the project quotes to 5 decimals.
+
+**Proposed rule.** When a run-level failure is detected at step S, invalidate every
+block-averaged row whose averaging window ENDS within one window-length of S, not merely
+those at or after S. Derive the window length from the data (median step spacing), never
+hardcode it. The same applies to any post-hoc event detection on a time series
+(melting, dislocation escape, box instability), not just to this collapse detector.
+
+**Generalisation worth having in canon:** an event detector's threshold defines when the
+event became *undeniable*, not when it began. Anything averaged over a window touching
+that boundary is suspect.
+
+---
+
+## 2026-08-05-1105 — a convergence verdict is not a data-quality filter
+
+**From** session 2026-08-05-1009-nih-harvest (pilot, ni-h-phase-diagram-eam-meam).
+**Class** analysis discipline.
+
+The v3 verdict ladder (crashed / empty / window-too-short / noise-limited / filling /
+equilibrated-late / equilibrated) answers one question: *is this point's mean a
+converged estimate of an equilibrium composition?* It is routinely reached for as a
+generic `converged` boolean and used to filter inputs to unrelated fits.
+
+Concrete case: the Delta_mu dilute-branch fit (thread 03 run 06). Filtering on
+`converged` removed every `noise-limited` point — points with a few dozen H in a
+10 976-atom cell, which are noisy in x but perfectly good in ln x. That collapsed the
+mc/sites leg to 3 points spanning 0.010 eV in mu and drove the shared d ln x/d mu to
+57/eV against an ideal Langmuir 38.7/eV. The notebook then described that fitted slope
+as "the physically expected one", i.e. reported a failed check as a passed one. Dropping
+the filter (keeping only `~crashed`) restored 43/eV and moved Delta_mu by 0.001 eV.
+
+**Proposed rule.** Filter on the failure mode that would actually corrupt the specific
+fit, named explicitly at the call site — for a log-x fit that is `crashed`, not
+`noise-limited`. A verdict built for question A is not a quality label for question B.
+Corollary already in preferences.md (plot defaults) but worth stating for fits too: if a
+fitted nuisance parameter disagrees with its physically expected value, say so; do not
+present the disagreement as corroboration.
+
+---
+
+## 2026-08-05-1110 — report the interval with NO converged point in it, not the count of points inside
+
+**From** session 2026-08-05-1009-nih-harvest (pilot, ni-h-phase-diagram-eam-meam).
+**Class** preferences.md, plot defaults — extends the existing "report the sampling
+density of any feature you compare" rule.
+
+canon already requires printing how many grid points fall inside a transition. That rule
+caught a real artefact on 2026-07-30 but is not sufficient, because converged points
+cluster on the phase branches: the Pezold EAM at 600 K has five points inside a naive
+0.05 < x < 0.95 window and they are ALL the sub-stoichiometric beta phase, not a
+filled-in transition.
+
+**Proposed extension.** For any first-order transition, report the **widest interval in
+the order parameter containing no CONVERGED state**. Two reasons it is the right
+statistic: a finite cell inside a two-phase region cannot converge to an intermediate
+value however long it is sampled, so the emptiness is physics rather than sampling; and
+the interval's endpoints ARE the coexisting phase compositions, so the diagnostic and the
+binodal are the same measurement. An empty interval of order the grid spacing means no
+transition is resolvable at that resolution — which is the honest way to say "the gap has
+closed" without claiming a critical point.
+
+In this project it turned four isotherms into a phase diagram with measured tie-lines and
+supplied the first Tc bracket the project has had.
+
+---
+
+## 2026-08-05-1115 — check a derived diagnostic column against the columns you already have
+
+**From** session 2026-08-05-1009-nih-harvest (pilot, ni-h-phase-diagram-eam-meam).
+**Class** style/lammps.md, output design.
+
+The 2026-07-30 wave added `V_oct_ideal` and `V_tet_ideal` to three runs, to help resolve
+octahedral-vs-tetrahedral occupancy. They are exactly a^3/6 and a^3/24 recomputed from the
+instantaneous a_eff — verified to 1e-5 over all 16 256 rows that carry them. They are pure
+functions of a column already being written and carry **zero** occupancy information. Four
+runs' worth of extra output, and a later reader would reasonably assume they meant
+something.
+
+**Proposed rule.** Before adding a derived per-step or per-block column, state in the
+input header what it measures that the existing columns do not, and verify it on the probe
+by regressing it against them. If it is a deterministic function of an existing column,
+either drop it or label it explicitly as a convenience restatement.
+
+Related: this is the same failure class as the 2026-08-04 `metric volume` gotcha filed
+from the dislocation project (proposals-inbox 2026-08-04-1710) — a quantity assumed to be
+a structural discriminator that turns out to be geometry. Worth merging the two into one
+canon lesson about interstice/volume diagnostics.
+
+
+---
+
+## 2026-08-05-1210 — L15 extension: a mount can list at the root and HANG deeper
+
+**From** session 2026-08-05-1009-nih-harvest (pilot, ni-h-phase-diagram-eam-meam).
+**Class** learnings.md, "Cluster discipline" / L15 (sshfs flakiness).
+
+L15 as written describes a stale sshfs as returning **empty directory listings** while
+exact-path reads still work, and prescribes a remount. Today produced a third state that
+the rule does not cover and that a remount did **not** fix:
+
+- `ls` of the mount ROOT returned the three thread dirs correctly.
+- `ls` at depth 3 (`<thread>/<run>/results/`) returned empty.
+- `ls` at depth 4 (`.../results/mu-2.30/`) **blocked** — a retry loop over five directories
+  with 2 s sleeps hit a 45 s command timeout without completing one of them.
+- `stat` succeeded on every path at every depth (it needs no readdir).
+- Exactly one directory resolved, `mu-2.32`, which happened to be enumerated in the first
+  second after the folder was reconnected. Every file under it then read normally.
+- Erik remounted, and re-added the folder to the session. Both changed which paths
+  resolved; neither restored deep enumeration.
+
+**Why it matters beyond the annoyance.** `stat` succeeding at every depth makes the tree
+look present. A session that checks a mount with `ls <root>` and `stat` on a couple of
+paths will conclude the mount is healthy, then silently mirror a subset — which is what
+happened at 10:12: the curated rsync copied five run directories and skipped the sixth
+with no error, and the gap was only caught by counting files afterwards.
+
+**Proposed rules.**
+1. **Health-check a mount at the depth the work needs**, not at its root — enumerate one
+   leaf directory and count entries against expectation. A root listing proves nothing.
+2. **Treat a mirror as unverified until the file count is compared** source vs
+   destination per run directory. Never infer completeness from rsync exiting 0; a
+   readdir that returns empty is not an error to rsync, it is an empty directory.
+3. **Do not conclude a remount fixed it.** Re-test at depth. Today's remount changed the
+   symptom (empty -> hanging) without fixing it.
+4. When deep readdir blocks, stop and hand Erik a copy-paste command for **his own
+   shell** — the bridge is the thing that is broken, and his shell talks to sshfs
+   directly. Do not burn the session retrying.
+
+
+---
+proposal_id: 2026-08-06-1240-spell-out-abbreviations
+session_id: 2026-08-06-1222-hydride-cycle-design
+proposed_at: 2026-08-06T12:40Z
+target_file: canon/preferences.md
+target_section: "Communication style" (new subsection, or fold into an existing prose-style section)
+priority: routine
+status: merged
+---
+
+## Proposed rule
+
+Spell out every abbreviation or acronym at first use in a response
+(e.g. "mean-squared displacement (MSD)", "diffusion coefficient of H
+as a function of temperature, D_H(T)"). Symbols and shorthand may be
+reused afterwards within the same response once defined.
+
+## Where it bit
+
+2026-08-06, hydride-cycle-design brainstorm: the pilot wrote
+"D_H(T) MSD arrays" without expansion; Erik: "Please always explain
+your abbreviations: no clue what : D_H(T) MSD means?". Not the first
+class of jargon-density feedback -- treat as a standing preference,
+not a one-off.
+
+## Suggested wording
+
+- **Spell out abbreviations at first use.** Every acronym, symbol or
+  shorthand gets its expansion the first time it appears in a
+  response ("mean-squared displacement (MSD)"); after that the short
+  form is fine. Applies to chat, project files, figure captions and
+  data-file headers alike. (Set 2026-08-06, Erik: "Please always
+  explain your abbreviations".)
+
+## Designer review notes
+
+Merged 2026-08-20 as a new preferences.md section "## Communication style",
+placed immediately before "## Output style" (which is about data files, not
+prose, so folding them would have buried it). Erik's quote kept verbatim.
+
+
+---
+proposal_id: 2026-08-06-1710-walltime-before-ranks
+session_id: 2026-08-06-1222-hydride-cycle-design
+proposed_at: 2026-08-06T17:10Z
+target_file: canon/learnings.md
+target_section: "Cluster discipline"
+priority: routine
+status: merged
+---
+
+## Proposed rule
+
+When an L26 walltime check shows a task will not fit its --time budget,
+the FIRST lever is extending --time toward the partition maximum (96 h
+on cmmg; padding is free, unused walltime is not billed) -- NOT adding
+ranks. Adding ranks is only justified while atoms/core stays above the
+~1000-2000 efficiency floor; below it, extra ranks mostly buy
+communication overhead.
+
+## Where it bit
+
+2026-08-06, ni-h-diffusivity hydride MSD arrays (7800-atom cells): probe
+rates put the 24e6-step tasks at ~40-47 h against a 48 h request. The
+pilot doubled ranks (8 -> 16, i.e. 975 -> 488 atoms/rank) and set 72 h
+instead of simply requesting 96 h at 8 ranks. Erik: "that would just
+stupidly increase the overhead of communications ... I think max
+runtime is 96h." Both facts were already on record (clusters.yaml
+max_time 4-00:00:00; learnings atoms-per-core guidance) -- the failure
+was not consulting them at decision time.
+
+## Suggested wording
+
+- **Walltime before ranks.** If a task does not fit its --time, extend
+  --time first (cmmg max 4-00:00:00; padding free, L26). Add ranks only
+  while atoms/core stays above the ~1000-2000 efficiency floor; halving
+  atoms/core below that trades wall-clock for communication overhead
+  and shared-node footprint. State atoms/core whenever proposing a rank
+  change. (2026-08-06, ni-h-diffusivity hydride arrays.)
+
+## Designer review notes
+
+Merged 2026-08-20 into learnings.md "Cluster discipline". Accepted in full. The
+self-critical sentence -- both facts were already on record and the failure was
+not consulting them -- is retained deliberately: it names the real defect, which
+is a lookup discipline failure, not a missing rule.
+
+
+---
+proposal_id: 2026-08-06-2050-zstd-on-thread-close
+session_id: 2026-08-06-1222-hydride-cycle-design
+proposed_at: 2026-08-06T20:50Z
+target_file: canon/learnings.md
+target_section: "Workflow rules" (extends L17 / mile-pebble curation)
+priority: routine
+status: merged
+---
+
+## Proposed rule
+
+When a thread (or a finished part of a project) is closed -- i.e. its
+files are no longer being actively worked with -- the pilot ensures its
+bulky artifacts are zstd-compressed as part of the closure, on both
+trees: trajectories/dumps, .data snapshots, restart files, large raw
+outputs. Human-readable records (project.md, thread.md, run.yaml, small
+.dat tables, plots) stay uncompressed. zstd -19 for archival per L17.
+
+## Where it bit
+
+2026-08-06, hydride-cycle session. Erik, on the trajectory-format
+discussion: "when you close one thread/part of our project, i.e. are no
+longer directly working with the files, please make sure they are zstd
+zipped." Until now compression was only specified for mile-pebble
+curation pulls (L17); this extends it to closure hygiene generally.
+
+## Suggested wording
+
+- **Closure implies compression.** Closing a thread includes a zstd
+  pass over its bulky artifacts (dumps/trajectories, .data, restart
+  files, large raw outputs) on cluster AND Mac; `zstd -19`, `.zst`
+  suffix, per L17. Text records and small analysis tables stay plain.
+  Compression commands on the cluster side are strict-A (pilot
+  prepares, Erik runs). (Erik, 2026-08-06.)
+
+## Designer review notes
+
+Merged 2026-08-20 into learnings.md "Workflow rules", directly under the existing
+mile-pebble curation bullet so the two compression rules sit together. Added that
+cluster-side compression commands are strict-A, which the proposal implied but
+did not state.
+
+
+---
+proposal_id: 2026-08-20-1150-tcc-eperm-vs-stale-sshfs
+session_id: 2026-08-20-1145-cluster-status-sweep
+proposed_at: 2026-08-20T11:50Z
+target_file: canon/learnings.md
+target_section: "Cluster discipline" / extends L15 (mount flakiness); also amends canon/session-startup.md step 0(c)
+priority: routine
+status: merged
+---
+
+## Proposed rule
+
+An unreadable cluster mount has TWO distinct causes with OPPOSITE fixes, and
+they must be told apart before acting. If a subdirectory `stat`s fine but
+reading or descending into it returns `Operation not permitted`, or the
+desktop bridge reports a macOS access denial, the sshfs mount is HEALTHY and
+the problem is a stale macOS TCC grant -- re-connect the folder in the desktop
+app; do NOT remount. Only an empty-or-inconsistent listing with NO permission
+error is L15 sshfs staleness, where remounting is the fix.
+
+## Where it bit
+
+2026-08-20, cluster-status-sweep session, on M5. `ls ~/cluster-mounts/cmmg`
+returned all 55 top-level entries and `stat Ni-H-DIFFUSIVITY` reported a valid
+directory with mtime Aug 6 16:15 -- but every descent returned
+`Operation not permitted`, and `device_list_dir` returned:
+
+    macOS denied access to ~/cluster-mounts/cmmg/Ni-H-HYDRIDE-CYCLE-EAM.
+    Grant access in System Settings -> Privacy & Security -> Files and Folders,
+    or pick the folder via Cowork's Connect Folder dialog (which infers consent).
+
+Both L15 and `canon/session-startup.md` step 0(c) currently say, in effect,
+"cluster mount reads as empty => the sshfs mount is down => ask Erik to
+remount." Following that here would have been the wrong action: the mount was
+serving names correctly the whole time. The actual cause was that the sshfs
+volume had been re-mounted since the folder was connected to the session, so
+the desktop app's TCC grant pointed at a dead volume id. Erik re-connected
+`~/cluster-mounts/cmmg` via "Add folder" and full read access returned
+immediately, with no remount and no System Settings change.
+
+Worse, the wrong fix is not neutral: remounting sshfs replaces the volume the
+existing grant points at, so a remount performed to "fix" a TCC denial can
+invalidate a grant that was still good.
+
+Second observation from the same session, worth recording alongside: after the
+re-connect, textbook L15 appeared as well -- `Ni-H-DIFFUSIVITY/.../results`
+listed its six temperature dirs by exact path while `ls` of its own parent
+returned empty, and a subtree that listed correctly in one call returned empty
+in the next. The two failure modes can be live at the same time and must be
+diagnosed separately. sacct, pasted by Erik, was again the only trustworthy
+account of what had run -- consistent with the 2026-08-07 hydride-cycle
+RESTART-BRIEF ("Do NOT trust mount listings").
+
+## Suggested wording
+
+- **Two mount failures, opposite fixes (extends L15).** Before calling a
+  cluster mount "down", classify the failure:
+  (a) *Permission* -- `stat` succeeds but reads/descents return
+  `Operation not permitted`, or the bridge reports a macOS access denial.
+  The mount is fine; a macOS TCC grant is stale, usually because the sshfs
+  volume was re-mounted after the folder was connected. Fix: re-connect the
+  folder in the desktop app ("Add folder" re-issues consent against the
+  current volume). Do NOT remount -- remounting can invalidate a good grant.
+  (b) *Staleness* -- listings empty or inconsistent between calls with NO
+  permission error, exact-path reads often still working. This is L15. Fix:
+  remount (`command_example` in `canon/clusters.yaml`).
+  Both can be live at once. In either case sacct, run by Erik, is the arbiter
+  of what ran; never conclude data loss from an unreliable listing.
+  (2026-08-20, cluster-status-sweep.)
+
+- **Escape hatch for mount-heavy sessions.** A harvest or status session that
+  must enumerate large cluster trees is better run as Claude Code natively on
+  the Mac than as a Cowork session: a process running as the user reads the
+  sshfs mount with no desktop-app TCC gate and no bridge re-export in the
+  path. Cowork remains right for sessions that mainly read the Mac-side
+  project tree, and for unattended/scheduled work. (2026-08-20, Erik's own
+  diagnosis, confirmed by this session's blocker.)
+
+## Designer review notes
+
+Merged 2026-08-20 in three places: learnings.md "Cluster discipline" (the
+classification and both fixes), canon/session-startup.md step 0(c) (which
+previously taught the WRONG action for the permission mode), and ARCHITECTURE.md
+17.4's summary of the environment gate. The Claude-Code-locally escape hatch is
+kept as an operational note in learnings, not promoted to a rule -- it is a
+sensible default for enumeration-heavy sessions, not an obligation.
+
+
+---
+proposal_id: 2026-08-20-1215-doc-check-applies-to-boring-commands
+session_id: 2026-08-20-1145-cluster-status-sweep
+proposed_at: 2026-08-20T12:15Z
+target_file: canon/style/lammps.md
+target_section: "1.9 LAMMPS version doc-check" (rewrite) + new lesson L<N> + canon/templates/lint-lammps-input.sh
+priority: urgent
+status: merged
+---
+
+## Proposed rule
+
+The doc-check applies to EVERY command the session writes or edits, not to a
+named list of interesting ones. Delete the enumeration in style/lammps.md 1.9.
+Additionally, mechanize the cheap part: for the handful of commands whose
+keyword vocabulary is small, closed and stable (`group`, `velocity`,
+`delete_atoms`, `change_box`, `reset_timestep`), the lint validates the
+keyword against a hardcoded list, because these are exactly the commands a
+session considers too mundane to look up.
+
+## Where it bit
+
+2026-08-20. `relax-Hbind_Ni-disloc-d90-Pezold-EAM-0K.in` line 193 read
+`group HGRP clear`. Job 21638800 aborted on the FIRST site of the loop --
+"ERROR: Could not find group clear group ID HGRP (src/group.cpp:137)" -- all
+256 ranks exit 1 after 56 s, 2026-08-05T00:29.
+
+Three independent guards existed and none of them applied:
+
+1. **style/lammps.md 1.9 enumerates its own scope out of the way.** It reads
+   "for every non-trivial command in the input (`fix`, `compute`,
+   `pair_style`, anything new this session)". `group` is not one of the three,
+   and to a session writing its Nth `group` line it is not "new". The rule as
+   written invites treating structural commands as exempt. `group` is mundane
+   right up to the moment you use a keyword it does not have.
+
+2. **The mistake is the exact analogy failure canon already names.**
+   learnings.md "Assumption without verification" warns against generalizing
+   one command's behaviour to another. `clear` IS a real LAMMPS command (it
+   resets the whole system); `velocity` has a `zero` keyword; `group` has
+   `delete`. "clear" is a plausible reset verb and the line scans as
+   idiomatic. This is L8's failure mode exactly (`pair_style meam/c` from
+   stale doc-memory) -- but L8 was CAUGHT, because L8 was about a
+   `pair_style` and so fell inside 1.9's list.
+
+3. **lint-lammps-input.sh cannot see it and says so.** Its header lists
+   "1.9 LAMMPS version doc-check" under "Does NOT cover (still manual review
+   required)". It checks L1/L2/L3/L5/L6/L8-style patterns; it has no concept
+   of "is this keyword valid for this command".
+
+So the first thing that could catch the bug was a 256-rank job. The probe
+discipline DID work -- the cost was 56 s of a debug-partition probe, not a
+production array. That part of canon is fine. What is not fine is that a
+one-word lookup was never mandated for the class of command involved.
+
+## CORRECTION 2026-08-20T12:40Z (same session, before merge)
+
+The premise above is WRONG and is left standing as the record. `clear` IS a
+valid `group` style in the loaded LAMMPS (`docs.lammps.org/group.html`:
+"*delete* or *clear* or *empty* or *region* or *type* or *id* or *molecule* or
+*variable* or *include* or *subtract* or *union* or *intersect* or *dynamic*
+or *static*"; `delete` removes the group, `clear` un-assigns its atoms). The
+error message says so too: the parser accepted `clear` and then failed the
+group LOOKUP at `src/group.cpp:137`. The actual defect is that both `clear`
+and `delete` require the group to already exist, and line 193 sits at the top
+of a `jump SELF` loop, so the first pass has no HGRP.
+
+This was caught by doc-checking the command before writing a lint to enforce a
+vocabulary -- i.e. by the very rule this proposal is about, applied to the
+proposal itself.
+
+Consequences for what is merged:
+
+1. The **closed-vocabulary lint is WITHDRAWN.** It would not have caught this
+   bug, and a keyword allow-list is exactly the kind of hardcoded knowledge
+   that goes stale between LAMMPS versions -- the failure mode L8 already
+   records. Merging it would have added maintenance burden and false
+   confidence.
+2. The **1.9 rewrite stands, with the emphasis moved** from "do not invent
+   keywords" to "check preconditions, not just spelling". A command can be
+   spelled correctly and still be invalid in the state the script has put the
+   system in. This is the same class as L37 (`reset_timestep` after a
+   gcmc-like fix) and `region ... INF` requiring an existing box.
+3. The lesson is merged as **L40**, rewritten accordingly.
+
+## Suggested wording
+
+Replace style/lammps.md 1.9 with:
+
+    ### 1.9 LAMMPS version doc-check
+
+    Every command line the session WRITES OR EDITS is checked against the
+    docs of the LAMMPS version currently loaded on the target cluster
+    (recorded in clusters.yaml and in the run's submit script) -- not the
+    latest stable, and not a remembered version. There is no exempt class
+    of command: `group`, `velocity`, `delete_atoms` and `set` have failed
+    this way, and their very familiarity is what suppresses the lookup.
+    Checking a line you did not touch is not required; checking a line you
+    typed is, however boring the command looks.
+
+    Keyword invention is the specific risk. A keyword that reads naturally
+    ("clear", "reset", "none") is not evidence that the command accepts it;
+    LAMMPS spells the same concept differently per command (`group ...
+    delete`, `velocity ... zero`, `unfix`). When the intended keyword is a
+    verb you supplied rather than one you read, look it up.
+
+New lesson, target lessons.md:
+
+    ## L<N> -- `group` has no `clear` keyword; the deleter is `delete`
+
+    **Rule:** to drop a group use `group ID delete`. There is no `clear`.
+    Note also that `group ID delete` FAILS if the group does not yet exist,
+    so a reset-at-top-of-loop idiom needs the group pre-created before the
+    label, or -- usually better -- no reset at all: after `delete_atoms
+    group HGRP compress no` the group holds no live atoms, so a subsequent
+    `group HGRP type 2` re-selects exactly the current members.
+
+    **Where it bit:** 2026-08-05, ni-h-at-dislocs thread 01 run 01, job
+    21638800, 256 ranks, dead on the first loop iteration.
+
+Lint change (canon/templates/lint-lammps-input.sh), new closed-vocabulary
+check, and move it out of the "does NOT cover" header list:
+
+    # closed-keyword commands -- small, stable vocabularies
+    #   group:        delete dynamic static region type id molecule variable
+    #                 include subtract union intersect clear<-INVALID
+    #   velocity:     create set scale ramp zero
+    #   delete_atoms: group region overlap porosity bond
+    # Fail on any second token not in the command's list.
+
+## Designer review notes
+
+Merged 2026-08-20 **after being partly refuted by its own rule** -- see the
+CORRECTION block above. What merged: the style/lammps.md 1.9 rewrite (exempt-class
+list removed; new preconditions clause with L5/L37/L38/L40 as the worked cases),
+and lessons.md **L40**, rewritten from "there is no `clear` keyword" to "`clear`
+and `delete` both require the group to exist".
+
+What did NOT merge: the closed-vocabulary lint check. It is **WITHDRAWN**. It
+would not have caught the bug that motivated it, and a hardcoded keyword
+allow-list is precisely the stale-knowledge failure L8 already records -- it would
+have added maintenance cost and false confidence. `templates/lint-lammps-input.sh`
+is unchanged and 1.9 remains in its "does NOT cover -- manual review required"
+list, which is now the honest position rather than a gap.
+
+The episode is the strongest argument for the rule it proposes: the proposal's
+own premise survived a confident post-mortem, a message to Erik, and a canon
+write, and died the moment someone opened docs.lammps.org/group.html.
+
+
+---
+proposal_id: 2026-08-20-1218-handed-over-jobs-must-be-reconciled-at-startup
+session_id: 2026-08-20-1145-cluster-status-sweep
+proposed_at: 2026-08-20T12:18Z
+target_file: canon/session-startup.md
+target_section: new step between 1 and 2 (or an extension of step 1) + ARCHITECTURE.md 17
+priority: urgent
+status: merged
+---
+
+## Proposed rule
+
+A submission handed to Erik but never confirmed is an OPEN LOOP owned by
+nobody. At startup, after reading SESSIONS.md, if ANY entry -- active or
+recently_closed -- carries a non-empty `in_flight`, the session asks Erik for
+one `sacct` line covering that period and reconciles it BEFORE asking for
+scope. This is cheap, it is bounded, and it does not depend on someone
+happening to resume the right project.
+
+## Where it bit
+
+2026-08-20. Four projects had submissions handed over and never confirmed:
+ni-h-phase-diagram run 14 (08-05), ni-h-at-dislocs x2 (08-04), ni-h-diffusivity
+(08-06), ni-h-hydride-cycle-eam (08-07). Every one of those entries said some
+version of "a resuming session must CHECK THE RUN DIRS FIRST". None was
+checked for 13-15 days, because the rule addressed a session that never came:
+the three owning entries went stale in `active` and nobody resumed those
+scopes.
+
+What the delay actually cost:
+
+- 21638800 FAILED on 08-05T00:29 with a one-line input bug. Fifteen days of a
+  dead thread that a two-minute fix would have unblocked.
+- Run 14's production arrays were never submitted at all. The probes had
+  passed TWICE (08-05 and again 08-06). Fifteen days of no size scan.
+- 42 diffusivity tasks and 4 cycle tasks completed on 08-09..08-11 and sat
+  unharvested for nine days.
+
+Note the asymmetry: the successes were merely delayed, but the FAILURE was
+invisible. A handed-over job that fails produces no signal at all under the
+current rules -- no one is told, and the next session is scoped to some other
+project. This is the same shape as L15's write-side variant recorded in
+clusters.yaml: "a stale read looks like missing data and gets noticed; a
+stale write-listing looks like a successful no-op."
+
+## Suggested wording
+
+Insert into canon/session-startup.md after step 1:
+
+    ### 1b. Reconcile open loops (added 2026-08-20)
+
+    Scan every entry in SESSIONS.md -- `active` AND `recently_closed` --
+    for a non-empty `in_flight`. If any is found, before asking for mode
+    and scope, ask Erik to paste ONE line:
+
+        sacct -X -S <earliest in_flight date> -o JobID%16,JobName%42,Partition,State,Elapsed,End,ExitCode,NNodes
+
+    Reconcile it against those entries and report, in the startup brief:
+    what completed, what failed, what was never submitted. Then clear the
+    reconciled `in_flight` fields. This runs regardless of what scope Erik
+    then picks -- an open loop belongs to the framework, not to a project.
+
+    Rationale: `in_flight` was designed as a note to a resuming session,
+    but nothing guarantees that session ever arrives. Between 2026-08-04
+    and 2026-08-20, four projects' handed-over submissions went
+    unreconciled for 13-15 days, and one silent FAILURE (21638800) went
+    unnoticed for the whole period.
+
+Corollary for wrap-up (step 3 of the wrap-up procedure): a session that closes
+with a non-empty `in_flight` states so in its `summary:` line, so the open
+loop is visible from the dashboard without opening the entry.
+
+## Designer review notes
+
+Merged 2026-08-20 in four places: canon/session-startup.md as new **step 1b**
+(with the full incident record, because the cost is the argument), the wrap-up
+procedure step 3 (a non-empty `in_flight` at close must appear in `summary:`),
+ARCHITECTURE.md 17.4 (ritual summary) and 17.6 (dashboard schema -- `in_flight`
+is now documented as the one field whose obligation outlives its entry).
+Accepted in full; nothing softened. This is the merge most likely to prevent a
+repeat of the fortnight, and it costs one pasted `sacct` line per session.
+
+
+---
+proposal_id: 2026-08-20-1610-ask-what-to-write-out-and-how-often
+session_id: 2026-08-20-1145-cluster-status-sweep
+proposed_at: 2026-08-20T16:10Z
+target_file: canon/preferences.md
+target_section: "Output style" -- new FIRST bullet, ahead of the existing minimalism rule; cross-ref from canon/learnings.md "Thread design"
+priority: urgent
+status: merged
+---
+
+## Proposed rule
+
+The set of quantities an input writes out, and the cadence it writes them at,
+is a DESIGN-TIME QUESTION FOR ERIK. Ask it explicitly before writing any LAMMPS
+input -- which per-atom fields, which global fields, and the frequency of each
+-- and record the answer in the thread file. Never infer the output set from a
+template, from a sibling run, or from what the planned analysis is assumed to
+need. Standing answer as of 2026-08-20: **per-atom stresses and per-atom
+energies are wanted** for any run whose science involves defect nucleation,
+phase transformation, or coherency stress.
+
+## Where it bit
+
+2026-08-20, harvesting ni-h-hydride-cycle-eam thread 01. The four production
+trajectories dump `id type x y z` and nothing else -- 75 GB of coordinates,
+201 frames (rate A) and 401 (rate B) per run, at 4 nodes and 14-65 h per task.
+
+Structure analysis (DXA on the Ni sublattice) is still possible from that. What
+is NOT possible is any map of the hydride-induced stress field or of the
+per-atom energy -- so the questions the project was built to answer, whether
+the coherently constrained slab generates defects and where the stress driving
+them sits, cannot be answered from the data that exists. Recovering them means
+re-running at the same cost. Note the fixed-lateral leg builds ~2 GPa of
+in-plane stress during charging: the stress field is not a nice-to-have here,
+it is the mechanism.
+
+Erik, 2026-08-20: *"please always ask which properties should be written out
+and in what frequency. Here we would need the atomic stresses and Energies."*
+
+**Near-miss with an existing preference, worth stating in canon explicitly.**
+`preferences.md` "Output style" records Erik's minimalism rule (L18): *"I like
+to have not the full menu of every thing outputted, but just what makes sense
+in that context."* That rule is about not dumping the full LAMMPS menu by
+reflex. It is NOT licence to omit what the question needs, and a session that
+reads it as a general bias toward fewer columns produces exactly this outcome.
+The two resolve cleanly once the output set is an ASKED question rather than a
+defaulted one: minimalism governs what to leave out of the set Erik specified,
+never what to omit from it. A designer merging this should put the two bullets
+adjacent so the ordering is visible.
+
+**Cadence belongs in the same conversation**, because content and frequency
+trade against each other. Adding six per-atom stress components and a per-atom
+energy to this dump roughly 2.5x the frame size: at the 20000-step cadence used
+here, 64 MB/frame becomes ~160 MB/frame and the 75 GB set becomes ~190 GB. That
+is a sampling decision to take at design time with Erik, not something to
+discover at harvest.
+
+## Suggested wording
+
+In `canon/preferences.md`, "Output style", as the FIRST bullet:
+
+    - **Ask what to write out, and how often, before writing the input.**
+      The output set is Erik's to specify, not the pilot's to infer. At
+      design time, ask explicitly: which PER-ATOM fields (positions, type,
+      stresses, energies, coordination, velocities), which GLOBAL/thermo
+      fields, and the cadence of each -- then record the answer in
+      thread.md alongside the run design. Do not copy an output set from a
+      template or a sibling run without re-asking; the sibling answered a
+      different question.
+      **Standing answer (2026-08-20): per-atom stresses and per-atom
+      energies are wanted** whenever the science involves defect
+      nucleation, phase transformation, or coherency stress. Erik: *"please
+      always ask which properties should be written out and in what
+      frequency. Here we would need the atomic stresses and Energies."*
+      Decide content and cadence TOGETHER -- per-atom stress plus energy is
+      roughly 2.5x the frame size, so the sampling interval usually has to
+      move with it.
+      The minimalism rule below (L18) applies AFTER this question is
+      answered: it governs what to leave out of the set Erik asked for,
+      never what to omit from it.
+
+Cross-reference in `canon/learnings.md`, "Thread design": a run design is not
+complete until the output set and its cadence are on the record in thread.md.
+
+## Designer review notes
+
+Merged 2026-08-20 into preferences.md "Output style" as the FIRST bullet, ahead of
+the minimalism rule, with a second bullet added after the existing ones stating the
+ordering explicitly (minimalism governs what to leave out of the set Erik asked for,
+never what to omit from it). The proposal's warning that L18 is the rule a session
+leans on when it writes `id type x y z` and stops is the reason the ordering is now
+written down rather than left implicit. Cross-reference added in learnings.md
+"Thread design": a run design is not complete until the output set and its cadence
+are on the record in thread.md.
+
+
+---
+proposal_id: 2026-08-20-1650-boundary-conditions-are-eriks-spec-and-deviations-must-be-recorded
+session_id: 2026-08-20-1145-cluster-status-sweep
+proposed_at: 2026-08-20T16:50Z
+target_file: canon/style/lammps.md
+target_section: new pre-flight item "1.13 Boundary conditions against the stated design" + new lesson in canon/lessons.md + canon/learnings.md "Thread design"
+priority: urgent
+status: merged
+---
+
+## Proposed rule
+
+Boundary conditions are part of the design Erik states, not an implementation
+detail the pilot chooses. Pre-flight checks `boundary` against what he actually
+asked for, and any substitution -- a different BC, or a mitigation standing in
+for one -- is surfaced to him BEFORE submission and written into thread.md. A
+free surface that faces vacuum across a PERIODIC axis is not a free surface: it
+is connected to the opposite face.
+
+## Where it bit
+
+2026-08-20, ni-h-hydride-cycle-eam thread 01, on all four production runs
+(21774658 / 21774659, 4 nodes each, 14-65 h per task).
+
+Erik asked for a solid wall and NO periodicity along z. The input has
+`boundary p p p` -- fully periodic in all three directions, confirmed in the
+trajectory headers (`ITEM: BOX BOUNDS pp pp pp`). There is no `fix
+wall/reflect` anywhere in either input. What was built instead, commented
+"desorption-cleanup":
+
+    region VAC  block INF INF INF INF $(131.0*v_A0) INF units box
+    fix EVAP MOBILE evaporate 10000 100 VAC ${RSEED}
+
+That substitution is inadequate on its own numbers:
+- the vacuum gap is z = 424.4 .. 477.5 A (15 a0, 53 A); VAC covers only
+  z > 463.3 A, the top 14 A of it;
+- H at 300 K has a thermal speed of ~27 A/ps, so it crosses the 53 A gap in
+  ~2 ps, while `fix evaporate` only looks every 10000 steps = 10 ps. A
+  desorbed H typically crosses the periodic boundary about five times before
+  the cleanup fix ever runs.
+
+**Measured consequence.** In the fixlat rate-A final configuration, the H
+z-distribution is:
+
+    z   0- 20 A :      64 H     <-- bottom of the slab, above the FIXED layers
+    z  20-360 A :       0 H
+    z 360-380 A :    1814 H
+    z 380-400 A :    7038 H
+    z 400-420 A :    7141 H
+    z 420-440 A :    8923 H
+
+The MC zone is z = 375..456 A. No H was ever inserted below 375 A, and the
+360 A of slab between 20 and 360 A contains exactly ZERO H -- so those 64 atoms
+did not diffuse down. They wrapped through the periodic z boundary from the
+vacuum above the top surface and landed on the bottom face, which is the frozen
+`FIXED` group. 64 of 24980 H is 0.26 % at this instant, but the channel is open
+for the whole run, it deposits H onto an artificial rigid surface, and it
+removes H from the top surface region -- which biases the degassing rate in the
+direction that makes degassing look faster than it is.
+
+**The process failure is the bigger one.** The deviation from Erik's stated
+design is nowhere on the record: not in the input header, not in thread.md, not
+in project.md, not in the RESTART-BRIEF. Nothing says "wall requested,
+evaporate used instead" or why. It surfaced only because Erik remembered what
+he had asked for, two weeks and four production runs later. A substitution
+nobody wrote down cannot be reviewed.
+
+## Suggested wording
+
+New pre-flight item in `canon/style/lammps.md`:
+
+    ### 1.13 Boundary conditions against the stated design
+
+    Read the `boundary` line and check it against what Erik specified for
+    this run, not against what the template had. State the BC back to him in
+    the design summary, in words ("periodic in x and y, reflecting wall at
+    the top, bottom three layers frozen"), before any submit.
+
+    Specific trap -- **vacuum across a periodic axis is not a free surface.**
+    If an axis is periodic and the cell contains a vacuum gap, the two faces
+    of the slab are connected through it: anything that desorbs from one
+    surface re-enters at the other. A cleanup fix is NOT equivalent to a
+    wall. If one is used anyway, its region must span the whole gap and its
+    interval must be short compared with the transit time of the lightest
+    species across that gap (for H at 300 K, ~27 A/ps -- a 50 A gap is
+    crossed in ~2 ps).
+
+    Grep:
+
+        grep -nE '^boundary' <input>
+        grep -nE 'fix .*(wall/reflect|evaporate)|^region .*(VAC|vac)' <input>
+
+    If `boundary` has `p` on an axis that has vacuum on it, either there is a
+    wall or there is a defect. Read which.
+
+New lesson in `canon/lessons.md`:
+
+    **L<N> -- a periodic axis with a vacuum gap connects the two slab faces.**
+    Rule, where it bit, and the measured 64-H-at-the-wrong-face evidence
+    above.
+
+And in `canon/learnings.md`, "Thread design":
+
+    - **A deviation from Erik's stated design is a reportable event.** If the
+      implementation cannot do what he asked, or the pilot judges something
+      else better, that is raised BEFORE submission and recorded in
+      thread.md with the reason. Silently substituting a mitigation for a
+      specified boundary condition, geometry or constraint puts an unreviewed
+      change into production, and the record then shows only the substitute.
+
+## Designer review notes
+
+Merged 2026-08-20 in three places, accepted in full: style/lammps.md new **1.13**
+(read `boundary` against the stated design; vacuum across a periodic axis is not a
+free surface; the two greps), lessons.md new **L41** carrying the measured
+z-histogram, and learnings.md "Thread design" for the process half -- a deviation
+from what Erik specified is raised BEFORE submission and recorded in thread.md.
+
+The two halves were kept separate on purpose. The physics error is recoverable by
+re-running; the process error is what let it survive two weeks and four production
+runs, and it would have hidden any other substitution equally well. The 64-H
+z-histogram is kept verbatim in L41 because the ZERO between 20 and 360 A is the
+whole argument -- transport leaves a trail, teleportation does not -- and a future
+session reading a summary without it could reasonably dismiss 0.26 % as noise.
+
+
+---
+proposal_id: 2026-08-20-1705-per-atom-stress-needs-averaging-or-a-quench
+session_id: 2026-08-20-1145-cluster-status-sweep
+proposed_at: 2026-08-20T17:05Z
+target_file: canon/style/lammps.md
+target_section: new "1.14 Per-atom stress and energy at finite T" + cross-ref from canon/preferences.md "Output style" (extends proposal 2026-08-20-1610)
+priority: routine
+status: merged
+---
+
+## Proposed rule
+
+An instantaneous per-atom stress or energy at finite temperature is mostly
+thermal noise and is not a usable field. Whenever per-atom stresses or energies
+are written for analysis, the input specifies HOW the noise is removed, by one
+of two routes, and says which in thread.md:
+
+1. **Time-averaging, inline.** `compute stress/atom` / `compute pe/atom` fed
+   through `fix ave/atom`, averaged over a window long compared with the
+   phonon period (~0.1-1 ps) and short compared with the evolution of the
+   field being measured. Cheap, runs during production, keeps the finite-T
+   ensemble.
+2. **Quench, on snapshots.** Relax a saved configuration with
+   `min_style quickmin` (or FIRE) for a short run, then compute the per-atom
+   quantities on the quenched inherent structure. Much cleaner field, but it
+   is a separate post-processing step and it relaxes local elastic strain, so
+   it answers a slightly different question.
+
+Doing both is usually right: inline time-averaged fields at the dump cadence
+so something usable always exists, plus enough full snapshots retained that a
+quench-based pass is possible afterwards.
+
+Erik, 2026-08-20: *"for the stress calculation we would either need averaging
+or a short minimization like quickmin to remove the noise."*
+
+## Where it bit
+
+Raised pre-emptively, 2026-08-20, while writing up ni-h-hydride-cycle-eam
+thread 01. That project wrote no per-atom fields at all (proposal
+2026-08-20-1610), so the point had not yet had a chance to bite -- but the
+next runs will write them, and writing them raw would produce a 190 GB dataset
+whose stress field is unusable. The signal being chased there is a coherency
+stress of order 2 GPa and local defect fields well below that, against
+instantaneous per-atom virial fluctuations of comparable magnitude at 300 K.
+
+## Two traps to record with the rule
+
+- **`compute stress/atom` returns stress x volume, not stress.** The output is
+  a virial in pressure-volume units and must be divided by a per-atom volume
+  to become a stress. Use `compute voronoi/atom` for that volume -- this
+  project already carries a Voronoi computation for the site catalogue, so
+  the machinery is present. Quoting `compute stress/atom` output directly in
+  GPa is wrong by a factor of the atomic volume.
+- **A quench must not relax the box.** `min_style quickmin` and FIRE cannot be
+  combined with `fix box/relax` (L12), and for a stress map you do not want
+  the box relaxed anyway -- relaxing it would discard exactly the coherency
+  stress being measured. Keep the cell fixed and quench the positions only.
+
+## Suggested wording
+
+New pre-flight item in `canon/style/lammps.md`:
+
+    ### 1.14 Per-atom stress and energy at finite T
+
+    A single-snapshot per-atom stress or energy at finite temperature is
+    dominated by thermal fluctuation and is not a field. If the input writes
+    per-atom stresses or energies for analysis, it must also say how the
+    noise is handled: inline time-averaging (`fix ave/atom` over ~0.1-1 ps
+    or longer), or a short `quickmin`/FIRE quench of saved snapshots at
+    FIXED box (L12 forbids pairing those minimizers with `fix box/relax`,
+    and a stress map wants the box held anyway). Record which in thread.md.
+
+    `compute stress/atom` returns stress x volume. Divide by a per-atom
+    volume (`compute voronoi/atom`) before calling the result a stress.
+
+## Designer review notes
+
+Merged 2026-08-20 as style/lammps.md **1.14**, accepted in full including both
+traps. Placed immediately after 1.13 so the boundary-condition and
+per-atom-field checks sit together -- they are the two questions that decide
+whether a production run's output can answer its own question.
+
+The `compute stress/atom` returns stress x volume trap is the one most likely to
+bite silently: it produces a plausible-looking number in the wrong units rather
+than an error, which is the same fail-late shape as L38. The L12 cross-reference
+(quickmin/FIRE cannot take `fix box/relax`) resolves the obvious way here, since a
+stress map wants the box held anyway.

@@ -47,7 +47,44 @@ Pilot-maintained. Pilot proposes new entries; Erik confirms.
 - `thermo_style custom step temp etotal fnorm fmax` as a sensible default;
   extend with system-specific columns when needed.
 
-## Directory naming
+## Convergence and force-norm reporting
+
+- **`fnorm` is extensive; never report it bare.** LAMMPS `fnorm` is the 2-norm
+  (length) of the GLOBAL force vector, a vector of size 3N for N atoms:
+  `fnorm = sqrt(sum_i sum_a f_ia^2)`, and `ftol` is compared directly against
+  it in force units (docs.lammps.org/minimize.html). A bare fnorm cannot be
+  compared between cells of different size: the same physical convergence gives
+  `fnorm = 1e-3` at 5.7e5 atoms and `fnorm = 8e-5` at 4000 atoms. See L9.
+- **Always report both normalizations, and name the definition.** Every LAMMPS
+  input carries a header block defining fnorm and both normalizations; every
+  `thermo_style` in a minimization carries `v_fnorm_per_atom` (= fnorm/N) and
+  `v_fnorm_per_dof` (= fnorm/sqrt(3N)) alongside the raw `fnorm`; every
+  thread.md, run.yaml and chat statement about convergence quotes both. Erik
+  (2026-08-03): *"ALWAYS state forcenorm/natoms and state that you are using
+  this definition."* The phrase "per-atom RMS" is banned as ambiguous -- it was
+  read three different ways in one sentence, spanning a factor 1300.
+- **Default 0 K stopping criterion: `fnorm/sqrt(3N) < 1e-8 eV/A`.** This is the
+  RMS force per degree of freedom and the only one of the three that is
+  size-independent. `fnorm/N` is NOT: it falls as 1/sqrt(N), so a fixed
+  `fnorm/N` target silently lets the per-atom force grow as sqrt(N) -- 4.4e-6
+  eV/A in a 5.7e5-atom dislocation cell against 3.7e-7 eV/A in a 4000-atom bulk
+  cell, from the same number. Erik's choice, 2026-08-03. Write it into the
+  input computed from the atom count, never hard-coded per cell:
+
+      variable n_atoms      equal count(all)
+      variable sqrt_3N      equal sqrt(3.0*v_n_atoms)
+      variable FTOL_PER_DOF equal 1.0e-8
+      variable ftol_global  equal v_FTOL_PER_DOF*v_sqrt_3N
+      minimize 0.0 ${ftol_global} <maxiter> <maxeval>
+
+  Tighten when the science demands it; loosen only on the record.
+- **Cap `maxiter` at ~15-20x the expected iteration count**, not at 800000. A
+  minimization that runs into the walltime cap never reaches its `write_data`
+  and loses everything; one that hits `maxiter` writes the structure and says
+  so in the `Stopping criterion` line. (This overrides the 800000 default in
+  "Computation defaults" above for any run long enough to approach its wall.)
+
+## Directory and file naming
 
 - **CAPITALS for directories, preserve chemical element typography.**
   Project root, thread dirs, run dirs all use CAPS
@@ -56,6 +93,16 @@ Pilot-maintained. Pilot proposes new entries; Erik confirms.
   (Ni not NI, Al not AL). The `id` field in frontmatter stays
   lowercase-kebab; the directory name uses CAPS. See ARCHITECTURE.md
   §4 folder naming. (Set 2026-05-29.)
+- **Extensions: `.dump` for dumps, `.lmps` for write_data.** Anything written
+  by a `dump` command ends `.dump`; anything written by `write_data`, or by an
+  external tool whose product is a LAMMPS data file, ends `.lmps`. Not `.data`,
+  not `.lammps`, not `.fcc`. Set 2026-08-03 (Erik: *"please have dumps called
+  .dump and writeouts *.lmps"*), matching his own EAM-DISLOCS-Ni-Cu files
+  (`d90_Ni-Mishin04_x-101_y1-21_z111_25x10x25.lmps`). Pre-existing files keep
+  their names -- the dcreator-built `.fcc` cells are LAMMPS data files with a
+  misleading extension and are NOT renamed; the rule governs what we write.
+  Note this supersedes the `.data` spelling used in ni-a0-cij-eam-meam and in
+  the "Output style" section's parenthetical below.
 
 ## Structure building
 
@@ -75,8 +122,37 @@ Pilot-maintained. Pilot proposes new entries; Erik confirms.
   not by duplicating the file. Otherwise a parameter study with N
   runs produces N copies of the same potential file. (Set 2026-05-29.)
 
+## Communication style
+
+- **Spell out abbreviations at first use.** Every acronym, symbol or shorthand
+  gets its expansion the first time it appears in a response -- "mean-squared
+  displacement (MSD)", "the diffusion coefficient of hydrogen as a function of
+  temperature, D_H(T)". After that the short form is fine within the same
+  response. Applies to chat, project files, figure captions and data-file
+  headers alike. Set 2026-08-06 (Erik: *"Please always explain your
+  abbreviations: no clue what : D_H(T) MSD means?"*). Treat as a standing
+  preference, not a one-off -- it is not the first jargon-density feedback.
+
 ## Output style
 
+- **Ask what to write out, and how often, before writing the input.** The
+  output set is Erik's to specify, not the pilot's to infer. At design time,
+  ask explicitly: which PER-ATOM fields (positions, type, stresses, energies,
+  coordination, velocities), which GLOBAL/thermo fields, and the cadence of
+  each -- then record the answer in thread.md alongside the run design. Do not
+  copy an output set from a template or a sibling run without re-asking; the
+  sibling answered a different question.
+  **Standing answer (2026-08-20): per-atom stresses and per-atom energies are
+  wanted** whenever the science involves defect nucleation, phase
+  transformation, or coherency stress. Erik: *"please always ask which
+  properties should be written out and in what frequency. Here we would need
+  the atomic stresses and Energies."*
+  Decide content and cadence TOGETHER -- per-atom stress plus energy is roughly
+  2.5x the frame size, so the sampling interval usually has to move with it.
+  (Where it bit: ni-h-hydride-cycle-eam thread 01 dumped `id type x y z` only,
+  75 GB across four production runs at 4 nodes and 14-65 h each, leaving the
+  hydride-induced stress field -- the mechanism the project exists to study --
+  unmeasurable without re-running.)
 - **Minimalism.** Each input writes only the outputs that answer the
   current question. Don't dump the full LAMMPS menu (per-atom stress,
   virial, every thermo column, etc.) by default. Erik's own words
@@ -99,6 +175,11 @@ Pilot-maintained. Pilot proposes new entries; Erik confirms.
   thread), and column names + units. Pure LAMMPS-format outputs
   (`.data`, `.dump`) get the default LAMMPS header line; provenance
   lives in run.yaml, not in the file.
+- **Minimalism applies AFTER the output set is agreed.** The two bullets are
+  ordered deliberately: minimalism governs what to leave out of the set Erik
+  asked for, never what to omit from it. A session that reads L18 as a general
+  bias toward fewer columns produces a dataset that cannot answer the question
+  it was run for.
 
 ## File authorship
 
@@ -304,3 +385,28 @@ the design, not in a follow-up. Surfaced 2026-05-31 Thread 03.
   (2026-07-30): "Please provide additional plots that exlude mu /
   concentraiton values where the tetrahedral sites get filled, so that
   one can actually see the transition regime better."
+- **Symmetric colour scales for signed quantities, always.** A map, heat map
+  or particle colouring of anything that can be positive or negative --
+  segregation and binding energies, stresses, displacements, differences of any
+  kind -- uses a **diverging** colormap (`RdBu_r`, `coolwarm`, `bwr`) on a
+  scale **symmetric about zero** (`vmin = -v`, `vmax = +v`). Set 2026-08-04
+  (Erik: *"I always teach my students that if they show such images, make sure
+  to use symetric color scales! please do that and try to remember it."*). A
+  sequential colormap or auto-ranged limits puts zero at an arbitrary place on
+  the bar, and a dipole field then reads as a monopole -- an edge dislocation
+  binds H in the tension lobe below the glide plane and repels it in the
+  compression lobe above, two nearly equal and opposite lobes, and an
+  asymmetric scale renders them in unrelated colours. The physics that matters
+  most in the figure is exactly what the wrong colour scale destroys.
+- **Sequential colormaps are for quantities with a physical zero at one end**
+  (concentration, density, count, magnitude). There, zero at the bottom of the
+  bar is the honest choice.
+- **Clip loudly, never silently.** When a few outliers would flatten the
+  structure, clip at a stated percentile and put both the clip and the true
+  extreme in the title. Do not let outliers set the limits, and do not hide
+  that you cut them. (2026-08-04: a handful of squeezed core sites reached
+  +0.66 eV while everything of interest lived inside +-0.15 eV.)
+- **Print the range for external viewers.** Any script that writes a file for
+  OVITO or ParaView prints the symmetric colour range to enter by hand --
+  "Adjust range" in those tools returns `[min, max]` (here `[-0.146, +0.662]`)
+  and will reintroduce exactly this problem downstream.

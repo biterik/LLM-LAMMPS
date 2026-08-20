@@ -27,15 +27,75 @@ clusters:
       home:       /home/<CLUSTER_USER>                    # reference-only; never written
     queue: slurm
     gpu: false
+    # ---- HARDWARE / TOPOLOGY --------------------------------------------
+    # Verified 2026-08-03 from `scontrol show partition p.cmmg|s.cmmg` and
+    # `sinfo -p p.cmmg,s.cmmg -o "%P %a %D %c %z %C %l"` run on cmmg, plus
+    # the MPCDF hardware table in
+    # canon/local/reference/cluster-lammps-info-legacy.txt.
+    hardware:
+      nodes: "cmmg[001-096]"              # 96 compute nodes
+      cpu: "2x AMD EPYC 9754, 128 cores per socket"
+      topology_S_C_T: "2:128:2"           # sockets : cores/socket : threads/core
+      physical_cores_per_node: 256        # <-- what --hint=nomultithread consumes
+      logical_cpus_per_node: 512          # SMT 2. Slurm counts CPUs as LOGICAL.
+      ram_per_node_GB: 768                # nameplate
+      real_memory_per_node_MB: 730000     # what Slurm allocates (TRES
+                                          # mem=68437.50G / 96 nodes).
+                                          # Drives the s.cmmg task cap, L36.
+      interconnect: "Mellanox InfiniBand NDR200, 200 Gb"
+      total_cpus_across_partition: 49152  # 96 x 512 logical
+      # cmti[001-360] is DIFFERENT hardware -- 2x Intel Xeon Gold 6230,
+      # 20 cores/socket = 40 cores, 192 GB -- and backs the *.cmfe
+      # partitions. Never size a cmfe job from cmmg core counts.
     partitions:
-      - { name: p.cmmg, scope: ">1 node" }
-      - { name: s.cmmg, scope: "<=1 node", default_for_1core: true }
-      - { name: p.cmfe, scope: ">1 node, cmti hardware" }
-      - { name: s.cmfe, scope: "<=1 node, cmti hardware" }
-    # Partition selection rule (lesson from 2026-05-29 walk):
-    # For 1-core / single-node runs, use s.cmmg even though Erik's older
-    # example submit scripts used p.cmmg with 128 tasks. Don't carry
-    # large-job patterns into small-job scripts.
+      - name: p.cmmg
+        scope: "parallel and WHOLE-NODE jobs"
+        nodes: "cmmg[001-096]"
+        min_nodes: 1
+        max_nodes: 96                     # up to 24576 physical cores
+        oversubscribe: EXCLUSIVE          # whole nodes, allocated exclusively
+        default_time: "1-00:00:00"        # 24 h
+        max_time: "4-00:00:00"            # 96 h
+        memory: "DefMemPerNode=UNLIMITED"
+      - name: s.cmmg
+        scope: "SUB-NODE jobs; nodes are SHARED between jobs"
+        nodes: "cmmg[001-096]"
+        min_nodes: 1
+        max_nodes: 1                      # hard cap: one node, always
+        oversubscribe: NO
+        default_time: "1-00:00:00"        # 24 h
+        max_time: "4-00:00:00"            # 96 h
+        memory: "DefMemPerCPU=1500M"
+        # L36: with --hint=nomultithread Slurm allocates WHOLE CORES, so
+        # allocated CPUs = 2 x ntasks and the implied default request is
+        # 2*ntasks*1500 MB. Cap without an explicit --mem:
+        #   floor(730000/1500) = 486 CPUs = 243 tasks nomultithread.
+        # 256 tasks needs `--mem=0`. Verified by sbatch --test-only
+        # bisect 2026-08-03; the 243-task break-even was exact.
+        max_nomultithread_tasks_without_mem_flag: 243
+      - { name: p.cmfe, scope: ">1 node, cmti hardware (40 cores/node)" }
+      - { name: s.cmfe, scope: "<=1 node, cmti hardware (40 cores/node)" }
+    billing:
+      tres_billing_weights: "CPU=0.43"
+    # Partition selection rule:
+    #  - more than one node -> p.cmmg. This one is hard: s.cmmg has
+    #    MaxNodes=1.
+    #  - 1-core baselines   -> s.cmmg (2026-05-29 walk).
+    #  - Do NOT pass `-N` unless you mean it; the working large-cell scripts
+    #    on this cluster set --ntasks only and let Slurm place them.
+    #  - ONE WHOLE NODE IS ALLOWED ON s.cmmg (MaxNodes=1,
+    #    MaxCPUsPerNode=UNLIMITED). The partition is NOT the constraint;
+    #    the memory default is. On s.cmmg a nomultithread job is capped at
+    #    243 tasks unless it passes `--mem=0` -- see L36. p.cmmg has no
+    #    per-CPU memory default and is unaffected.
+    #  - For a job whose PURPOSE is a timing measurement, prefer p.cmmg
+    #    (OverSubscribe=EXCLUSIVE): no noisy neighbours on the node.
+    #  - Validate any new resource request with `sbatch --test-only`
+    #    BEFORE submitting. It reports placement and start time without
+    #    queueing anything, and it costs nothing.
+    # WALLTIME: default 24 h, MAXIMUM 96 h (4-00:00:00) on BOTH cmmg
+    # partitions. Ask for what the job needs up to 96 h; unused walltime is
+    # not billed (billing is TRES CPU-weighted, see `billing` above).
     modules:
       lammps:
         - lammps/241119
@@ -125,6 +185,12 @@ clusters:
       # `canon/templates/mirror-cluster-to-mac-curated.sh` (rsync with
       # filter rules so noise can't sneak in).
       - important_outputs_mirrored_to_mac
+      # SETTLED 2026-08-03 by an sbatch --test-only bisect (see L36).
+      # s.cmmg DefMemPerCPU=1500 MB x (2 x ntasks) allocated CPUs under
+      # --hint=nomultithread exceeds the node's RealMemory=730000 MB above
+      # 243 tasks, and sbatch rejects it at submit time. Fix: --mem=0.
+      # NOT a partition-scope issue: one whole node IS allowed on s.cmmg.
+      - s_cmmg_defmempercpu_caps_nomultithread_tasks
 
   # ---------------------------------------------------------------------
   # Seeded 2026-07-28 from the LAMMPS-compile-n-bench repo (see

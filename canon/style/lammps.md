@@ -26,10 +26,17 @@ Must return nothing. These are runtime quantities — they need `$(...)`
 ### 1.2 Generic-filename check (L3, L20)
 
 ```
-grep -E '(^|[^A-Za-z])(dump\.out|restart\.data|log\.lammps|a0-result\.txt|relaxation-log\.dat|final-snapshot\.dump|tmp\.|out\.dat|data\.lammps)' <input>
+grep -E '(^|[[:space:]/="])(dump\.out|restart\.data|log\.lammps|a0-result\.txt|relaxation-log\.dat|final-snapshot\.dump|tmp\.|out\.dat|data\.lammps)([[:space:]"]|$)' <input>
 ```
 
-Must return nothing. Every output filename must encode at minimum
+Must return nothing. **The leading and trailing anchors are load-bearing:** the
+offence is a filename that IS the tutorial default, not one that ends with it.
+`Ni-fcc-Pezold-EAM-final-snapshot.dump` is correct and must not be flagged; a
+bare `final-snapshot.dump` must be. The pre-2026-08-03 pattern opened with
+`(^|[^A-Za-z])`, which a leading `-` satisfies, so it flagged every
+descriptively-prefixed name -- including the canonical idiom this same file
+recommends in section 3. `templates/lint-lammps-input.sh` already carried the
+anchored form; only this document was stale. Every output filename must encode at minimum
 structure + observable + potential context (e.g.,
 `Ni-fcc-10x10x10-a0-min-Pezold-EAM.data`,
 `Ni-fcc-Cij-strain-axial-1e-3-MEAM-KoShimLee.log`).
@@ -167,11 +174,36 @@ and confirm operand strings are pure alphanumerics + underscores.
 
 ### 1.9 LAMMPS version doc-check
 
-For every non-trivial command in the input (`fix`, `compute`,
-`pair_style`, anything new this session), verify against the docs of
-the **LAMMPS version currently loaded on the target cluster**, not the
-latest stable. Module is recorded in `clusters.yaml` and in the run's
-submit script. (`learnings.md` LAMMPS-specific section, expanded.)
+Every command line the session **writes or edits** is checked against the docs
+of the LAMMPS version currently loaded on the target cluster (recorded in
+`clusters.yaml` and in the run's submit script) -- not the latest stable, and
+not a remembered version. **There is no exempt class of command.** The previous
+wording named `fix`, `compute` and `pair_style`, which read as a whitelist and
+quietly exempted the structural commands -- `group`, `velocity`, `set`,
+`delete_atoms`, `region` -- whose very familiarity suppresses the lookup. A
+line you did not touch needs no check; a line you typed does, however boring
+the command looks. (Rewritten 2026-08-20 after L40.)
+
+**Check the preconditions, not just the spelling.** A command can be spelled
+correctly, appear verbatim in the syntax block, and still be invalid in the
+state the script has put the system in. When reading a doc page, read for:
+
+- does this require the group / fix / compute / region / box to already
+  **exist**? (`group ID clear` and `group ID delete` both do -- L40;
+  `region ... INF` needs a box created first)
+- is it legal **during minimize**? (L5)
+- does it depend on **ordering** relative to another command? (L37:
+  `reset_timestep` after a gcmc-like fix silently disarms it)
+- does it behave the same for a **group other than `all`**? (L38)
+
+**Keyword invention is a real but secondary risk.** A keyword that reads
+naturally ("clear", "reset", "none") is not evidence that the command accepts
+it, and LAMMPS spells the same concept differently per command (`group ...
+delete`, `velocity ... zero`, `unfix`). When the keyword is a verb you supplied
+rather than one you read, look it up. Note, though, that a hardcoded
+allow-list of keywords is NOT the remedy: names change between versions (L8),
+so the list goes stale and buys false confidence. Read the doc page for the
+loaded version -- that is the whole rule.
 
 ### 1.12 `print` / `fix print` argument sanity (L30, L31)
 
@@ -202,6 +234,52 @@ any `%` in a standalone `print` line should sit inside a `$(...)` with
 a float format, otherwise reject.
 
 ---
+
+### 1.13 Boundary conditions against the stated design
+
+Read the `boundary` line and check it against what Erik specified for THIS run,
+not against what the template had. State the boundary conditions back to him in
+words in the design summary ("periodic in x and y, reflecting wall at the top,
+bottom three layers frozen") before any submit.
+
+**Vacuum across a periodic axis is not a free surface.** If an axis is periodic
+and the cell contains a vacuum gap, the two faces of the slab are connected
+through it: anything desorbing from one surface re-enters at the other. A
+cleanup fix is NOT equivalent to a wall. If one is used anyway, its region must
+span the whole gap, and its interval must be short compared with the transit
+time of the lightest species across that gap -- for H at 300 K, ~27 A/ps, so a
+50 A gap is crossed in ~2 ps.
+
+```
+grep -nE '^boundary' <input>
+grep -nE 'fix .*(wall/reflect|evaporate)|^region .*(VAC|vac)' <input>
+```
+
+If `boundary` has `p` on an axis that has vacuum on it, either there is a wall
+or there is a defect. Read which. See L41.
+
+### 1.14 Per-atom stress and energy at finite T
+
+A single-snapshot per-atom stress or energy at finite temperature is dominated
+by thermal fluctuation and is not a field. If the input writes per-atom
+stresses or energies for analysis, it must also say how the noise is handled,
+and thread.md records which:
+
+- **inline time-averaging** -- `compute stress/atom` / `compute pe/atom`
+  through `fix ave/atom`, over a window long compared with the phonon period
+  (~0.1-1 ps) and short compared with the evolution of the field; or
+- **a short `quickmin`/FIRE quench** of saved snapshots at FIXED box, then
+  compute on the inherent structure. L12 forbids pairing those minimizers with
+  `fix box/relax`, and a stress map wants the box held anyway -- relaxing it
+  would discard the coherency stress being measured.
+
+Usually do both: averaged fields inline so something usable always exists, plus
+enough full snapshots retained that a quench pass is possible later.
+
+**`compute stress/atom` returns stress x volume, not stress.** Divide by a
+per-atom volume (`compute voronoi/atom`) before calling the result a stress;
+quoting its output directly in GPa is wrong by a factor of the atomic volume.
+(Erik, 2026-08-20.)
 
 ## 2. Rules from lessons.md
 

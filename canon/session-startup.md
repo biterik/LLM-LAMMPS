@@ -68,11 +68,23 @@ desktop app and add it. Folders CAN be added at any point, including
 mid-session; they become visible immediately. This applies whether the
 session runs in the cloud or on his computer.
 
-If the cluster mount is connected but reads as *empty*, the sshfs mount
-itself is down — ask Erik to remount (`command_example` in
-`canon/clusters.yaml`) rather than concluding the data is gone. A flaky
-mount has twice been misread as data loss (2026-06-01); an unreliable
-source is not evidence of absence.
+If the cluster mount is connected but reads as *empty*, **classify before
+acting** — the two causes have opposite fixes (learnings.md, Cluster
+discipline):
+
+- `stat` on a subdirectory succeeds but reads or descents return
+  `Operation not permitted`, or the bridge reports a macOS access denial →
+  the mount is FINE and a macOS TCC grant is stale. Ask Erik to **re-connect
+  the folder** ("Add folder" re-issues consent against the current volume).
+  Do NOT ask for a remount: remounting replaces the volume a still-good
+  grant points at.
+- listings empty or inconsistent between calls with NO permission error,
+  exact-path reads often still working → this is L15 staleness. Ask Erik to
+  **remount** (`command_example` in `canon/clusters.yaml`).
+
+Both can be live at once (observed 2026-08-20). Either way, do not conclude
+the data is gone: a flaky mount has twice been misread as data loss
+(2026-06-01); an unreliable source is not evidence of absence.
 
 Either way: say plainly what is missing and **do not improvise a
 substitute** or narrow the scope to whatever happens to be visible. That
@@ -90,6 +102,38 @@ section. Note:
 - Who holds the designer lock (if any)
 - What scopes are owned (pilot scopes), so we can detect collisions
 - What's in flight (cluster jobs, ongoing operations) per session
+
+### 1b. Reconcile open loops (added 2026-08-20)
+
+Scan every entry in `SESSIONS.md` — `active` **and** `recently_closed` — for a
+non-empty `in_flight`. If any is found, then **before** asking for mode and
+scope, ask Erik to paste one line:
+
+```
+sacct -X -S <earliest in_flight date> -o JobID%16,JobName%42,Partition,State,Elapsed,End,ExitCode,NNodes
+```
+
+Reconcile it against those entries and report, in the startup brief: what
+completed, what failed, and what was never submitted. Then clear the reconciled
+`in_flight` fields. This runs regardless of which scope Erik then picks — an
+open loop belongs to the framework, not to a project.
+
+Rationale: `in_flight` was designed as a note to a resuming session, but
+nothing guarantees that session ever arrives. Between 2026-08-04 and
+2026-08-20, four projects' handed-over submissions went unreconciled for 13–15
+days. Three of the owning entries went stale in `active` and nobody resumed
+those scopes; every one of them said some version of "a resuming session must
+CHECK THE RUN DIRS FIRST". What it cost: 42 diffusivity tasks and 4 cycle
+tasks finished 08-09..08-11 and sat unharvested for nine days; run 14's
+production arrays were never submitted at all though its probes had passed
+twice; and job 21638800 FAILED on 08-05 with a one-line input bug (L40) that
+nobody saw for fifteen days.
+
+Note the asymmetry, which is why this is a gate and not a reminder: a delayed
+success is merely late, but a handed-over job that **fails** produces no signal
+at all under the old rules. Same shape as the L15 write-side variant recorded
+in `clusters.yaml` — "a stale read looks like missing data and gets noticed; a
+stale write-listing looks like a successful no-op."
 
 ### 2. Ask Erik mode + scope
 
@@ -225,7 +269,9 @@ done for today") or the conversation is clearly complete:
    in SESSIONS.md.
 2. Add a `closed: <ISO 8601>` timestamp.
 3. Add a `summary:` line (one or two lines on what was accomplished
-   or where it stopped).
+   or where it stopped). **If `in_flight` is non-empty at close, say so in
+   the `summary:` line itself**, so the open loop is visible from the
+   dashboard without opening the entry (added 2026-08-20, with step 1b).
 4. If there's a natural successor session that should pick this work
    up, add `handoff_to: <successor session_id>` (or `null`).
 5. Update relevant `thread.md` or `project.md` so future sessions

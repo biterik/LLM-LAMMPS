@@ -996,3 +996,266 @@ match `fix mc/sites 20 1000`.
 
 **Target:** `learnings.md` "Analysis plan before data-collection plan"
 cross-ref; design-time check whenever two MC fixes are compared.
+
+## L36 -- s.cmmg's DefMemPerCPU caps a nomultithread job at 243 tasks; use `--mem=0`
+
+**Rule:** `s.cmmg` sets `DefMemPerCPU=1500` (MB). A cmmg node has
+`RealMemory = 730000 MB` (TRES mem=68437.50G over 96 nodes). With
+`--hint=nomultithread` Slurm allocates WHOLE CORES, so the allocated-CPU
+count is **2 x ntasks**, and the implied default memory request is
+`2 * ntasks * 1500 MB`. Therefore on s.cmmg, without an explicit memory
+request:
+
+    max allocated CPUs = floor(730000 / 1500) = 486
+    max tasks (nomultithread)                = 243
+
+A 256-task nomultithread job implies 512 x 1500 MB = 768000 MB > 730000 MB
+and is rejected at submit time -- by CONFIGURATION, so it never queues:
+
+```
+sbatch: error: Batch job submission failed: Requested topology configuration is not available
+sbatch --test-only ... : allocation failure: Requested node configuration is not available
+```
+
+**Fix:** add `#SBATCH --mem=0` (request all memory on the node). Then the
+full 256 tasks / 512 CPUs place fine on s.cmmg. `p.cmmg` is unaffected
+because it sets `DefMemPerNode=UNLIMITED`, not a per-CPU default.
+
+**Bisect that established it** (2026-08-03, `sbatch --test-only`, which
+validates and reports placement without queueing anything -- free):
+
+| request on s.cmmg unless noted | result |
+|---|---|
+| `-N 1 --ntasks=256 --hint=nomultithread` | FAIL |
+| `--ntasks=256 --hint=nomultithread` (no -N) | FAIL -> **-N was NOT the cause** |
+| `--ntasks=256 --hint=nomultithread --mem=0` | PASS, 512 processors |
+| `--ntasks=256 --hint=multithread` | PASS, 256 processors (2 tasks/core) |
+| `--ntasks=243 --hint=nomultithread` | PASS, 486 processors -- the predicted break-even, exact |
+| `--ntasks=256 --hint=nomultithread` on p.cmmg | PASS, 512 processors |
+
+**Corollary -- ONE WHOLE NODE IS ALLOWED ON s.cmmg.** `MaxNodes=1` with
+`MaxCPUsPerNode=UNLIMITED`. An earlier version of this lesson claimed
+whole-node jobs belong in p.cmmg; that was WRONG and is withdrawn
+(Erik, 2026-08-03: "ONE WHOLE NODE IS STILL ON CMMG.s"). The partition is
+not the discriminator -- the memory default is.
+
+**Corollary -- queue behaviour.** A 512-CPU request occupies the whole
+node either way, so s.cmmg + `--mem=0` and p.cmmg reported the SAME
+predicted start (same node, same time). A 256-CPU request (e.g. 128 tasks
+nomultithread, or 256 tasks multithread) backfills onto a shared node much
+sooner. If a short calibration job is waiting a long time, halving the
+rank count is the lever -- but prefer p.cmmg for anything whose PURPOSE is
+a timing measurement, since an exclusive node has no noisy neighbours.
+
+**Where it bit:** 2026-08-03, `ni-h-at-dislocs-eam-meam` thread 01, first
+probe of the 0 K H binding map. Rejected before queueing; no slot lost.
+
+**Meta-lesson (the expensive one):** the first diagnosis changed THREE
+parameters at once (`-N 1`, task count, partition), picked the difference
+that fit a story, and wrote it into canon as a rule. It was wrong. When a
+submit fails, change ONE thing at a time -- and `sbatch --test-only`
+makes that bisect free, so there is no excuse for guessing.
+
+**Target:** `clusters.yaml` cmmg block (`hardware.real_memory_per_node_MB`,
+s.cmmg `memory:` note, quirk `s_cmmg_defmempercpu_caps_nomultithread_tasks`).
+
+## L37 -- never `reset_timestep` after defining a gcmc-like fix
+
+**Rule:** `fix mc/sites`, `fix gcmc` and `fix deposit` arm their first MC
+block at creation time (`next_reneighbor = step + 1`). `reset_timestep`
+does NOT remap a fix's reneighbour schedule, so a `reset_timestep` issued
+*after* the fix is defined pushes that first block past the end of the
+run and silently disarms the fix. Symptom: a clean-looking run with
+`Msites = 0`, `natt = 0` and zero neighbour builds -- no error, no
+warning, no MC.
+
+Either reset the timestep BEFORE defining the fix, or re-define
+(`unfix` / `fix`) the fix afterwards to re-arm it.
+
+**Where it bit:** found 2026-07-27 during the mc/sites Viper porting work
+(`in.mcmd_bench_nih`), where it also invalidated an earlier
+"Msites = 0 under -sf kk" diagnosis -- that had been read as a Kokkos bug
+and was at least confounded by this input bug. Recorded in
+`canon/local/reference/cluster-lammps-info-legacy.txt`; promoted to a
+numbered lesson 2026-08-03 because the pattern is one `jump SELF`
+production loop away from biting again: the EAM-DISLOCS-Ni-Cu
+`in_sgcmc_d90_*` chunked-restart template calls `reset_timestep` on every
+chunk, and that template is an obvious thing to copy for an mc/sites run.
+
+**Pre-flight implication:** for any input containing `fix mc/sites`,
+`fix gcmc` or `fix deposit`, grep for `reset_timestep` and confirm every
+occurrence precedes the fix definition:
+
+```
+grep -nE '^(reset_timestep|fix .*(mc/sites|gcmc|deposit))' <input>
+```
+
+Read the line order. A `reset_timestep` after the fix line is a reject.
+
+**Target:** `style/lammps.md` sec 1 pre-flight.
+
+## L38 -- group-scoped fixes that keep global counters are not group-safe
+
+**Rule:** before applying any LAMMPS fix that maintains a global counter,
+concentration or collective constraint (`fix sgcmc variance`, gcmc/widom-family
+bookkeeping) to a group other than `all`, verify from the docs -- and, if the
+docs are silent, from the source -- that the subgroup case is actually
+implemented consistently. "Parses cleanly and echoes its parameters" is not
+evidence that it is. The signature to look for in the source is mismatched
+scopes: group-filtered counts compared against `atom->natoms`-scaled targets.
+
+**Where it bit:** EAM-DISLOCS-Ni-Cu, VCD90-T300-c031 v1-v5 (2026-04-08..13).
+`fix interior sgcmc ... variance kappa target` silently produced wrong physics:
+`fix_sgcmc.cpp` counts species over the fix group but scales the
+variance-constraint targets by `atom->natoms`, so with a frozen pure-Ni
+boundary excluded from the group the ~27k boundary Ni atoms read as a Ni
+deficit and the outer variance-constraint test vetoed every Ni->Cu swap
+(e^-19 already at kappa=200). Five run campaigns and a kappa sweep chased
+"kappa too weak" for a bug no kappa can cure. The doc page gives no warning
+and every doc example uses group `all`. Root cause confirmed at source level
+2026-08-02, thread 02_VCSGC-VARIANCE-CONSTRAINT-GROUP-BUG. Worth filing
+upstream.
+
+**Fail-late class.** The input parses, the fix echoes its parameters, and the
+error appears only as physically wrong equilibria. No lint can catch it; the
+check belongs in design-time review whenever `fix <ID> <group>` has
+`<group> != all` and the fix doc mentions concentrations or targets.
+
+**Target:** `style/lammps.md` sec 1 pre-flight cross-ref.
+
+## L39 -- subtract the right background SHAPE; a good fit is not a mechanism
+
+**Rule:** before calling anything a segregation, binding or excess energy, ask
+what the cell's boundary conditions and defect content *require* the background
+to look like, and check that prediction against the raw geometry -- atoms per
+layer, layer spacings, per-atom energy and stress profiles -- not against how
+well a polynomial fits. Prefer a **non-parametric background** (the median of
+the same site class at the same coordinate, far from the defect) whenever the
+data supports one: it assumes no shape and therefore cannot invent one.
+
+Two specific traps:
+
+- **A straight line through the inner part of a saturating step fits
+  beautifully and means nothing.** The tell is the residual: if the fit
+  residual is comparable to the effect you intend to measure next, the model
+  has failed -- it is not "within tolerance".
+- **A flat per-atom energy does NOT mean zero strain.** Elastic energy is
+  quadratic in strain, so a +-eps step is invisible in the energy while being
+  fully visible in any quantity linear in strain (interstitial insertion
+  energies, layer spacings, per-atom stress). Read the stress or the geometry,
+  not the energy, when asking whether a cell is strained.
+
+And when the operator says a boundary condition forbids what you just
+reported, believe the boundary condition first and go back to the dump files.
+
+**Where it bit:** 2026-08-04, ni-h-at-dislocs-eam-meam thread 01, the 0 K H
+insertion map on a d90 edge dislocation (`boundary p p s`, three fixed (111)
+layers per z face). `E_ins(z)` rose monotonically across the 140 A map zone;
+a straight-line fit gave +32.7 meV (oct) / +43.4 meV (tet) with residual rms
+1.18 / 1.54 meV, written up as "plastic bending of a free-standing slab".
+Erik rejected it on the boundary conditions alone, and the dumps settled it:
+per-atom Ni energy flat to 0.05 meV over 140 A (no bending energy); 4646 atoms
+per (111) layer above the glide plane against 4600 below, exactly +1.000 %
+against `b/lx = 0.995 %` (the extra half-plane, a STRAIN STEP); interlayer
+spacing 2.03174 A below vs 2.03725 A above, each flat to 1e-5 A. The true
+profile is odd and saturating, `A(1-exp(-d/lambda))` with `2A = 39.1 meV`,
+`lambda = 53.0 A`, residual rms 0.079 meV -- fifteen times better. The
+non-parametric background took far-field flatness from 1-2 meV of leftover
+structure to 0.15-0.34 meV and the 2 meV reach from unmeasurable to r = 102 A.
+The headline trap depth moved 0.4 meV, so the conclusion never depended on it
+-- but the tail analysis did, and the wrong mechanism sat in three files and a
+notebook for a day.
+
+**Target:** analysis / post-processing review, before any background
+subtraction.
+
+## L40 -- `group ID clear` and `group ID delete` both require the group to EXIST
+
+**Rule:** `clear` and `delete` are both valid `group` styles -- `delete` removes
+the named group, `clear` un-assigns all its atoms while keeping the group. Both
+operate on an EXISTING group, so either one placed at the top of a `jump SELF`
+loop fails on the FIRST pass, before the group has ever been defined. Pre-create
+the group before the `label` (a `group ID type N` with no atoms of type N yet
+creates it empty), or -- usually better -- drop the reset entirely: after
+`delete_atoms group ID compress no` the group holds no live atoms, so the next
+`group ID type N` re-selects exactly the current members.
+
+**Where it bit:** 2026-08-05, ni-h-at-dislocs-eam-meam thread 01 run 01
+(`relax-Hbind_Ni-disloc-d90-Pezold-EAM-0K.in` line 193, `group HGRP clear`).
+Job 21638800 died on the FIRST iteration of the site loop -- "ERROR: Could not
+find group clear group ID HGRP (src/group.cpp:137)" -- all 256 ranks exit 1
+after 56 s. Found 2026-08-20, fifteen days later, because nothing reconciled
+the handed-over submission (see session-startup step 1b, added the same day).
+Note what the error message is actually saying: the parser ACCEPTED `clear` as
+a style and then failed the group lookup. `src/group.cpp:137` is the lookup,
+not a keyword table.
+
+**Lesson generalization -- the one that matters here.** The first post-mortem
+of this bug (2026-08-20, same session) asserted that `clear` was an invented
+keyword and proposed a closed-vocabulary lint to catch it. That diagnosis was
+WRONG, and checking `docs.lammps.org/group.html` before writing the lint is
+what caught it. The real class is harder and no vocabulary check would have
+touched it: **a command can be spelled correctly and still be invalid in the
+state the script has put the system in.** Doc-checking a command means reading
+its preconditions -- does this require the group / fix / compute / region to
+already exist, does it require an existing box, is it legal during minimize --
+not just confirming the keyword is in the syntax block. See `style/lammps.md`
+1.9. Two prior lessons are the same shape: L37 (`reset_timestep` after a
+gcmc-like fix silently disarms it) and the `region ... INF` requires an
+existing box note from the 2026-08-06 hydride-cycle session.
+
+**Target:** `style/lammps.md` 1.9 (preconditions clause).
+
+
+## L41 -- a periodic axis with a vacuum gap connects the two slab faces
+
+**Rule:** a free surface facing vacuum across a PERIODIC axis is not a free
+surface. Whatever leaves one face re-enters at the other. If a slab needs a
+genuine free surface, make the axis non-periodic and add a wall
+(`boundary p p f` + `fix wall/reflect zhi EDGE`); a `fix evaporate` cleanup is
+not a substitute. If a cleanup fix is used anyway, its region must span the
+WHOLE gap and its interval must be short against the transit time of the
+lightest species across it.
+
+**Where it bit:** 2026-08-20, ni-h-hydride-cycle-eam thread 01, all four
+production runs (21774658 / 21774659, 4 nodes each, 14-65 h per task). Erik had
+specified a solid wall and no periodicity in z. The inputs carry
+`boundary p p p` -- confirmed in the trajectory headers as `pp pp pp` -- and no
+`fix wall/reflect` anywhere. In its place:
+
+```
+region VAC  block INF INF INF INF $(131.0*v_A0) INF units box
+fix EVAP MOBILE evaporate 10000 100 VAC ${RSEED}
+```
+
+Inadequate on its own numbers: the vacuum gap is 424.4-477.5 A (53 A) while VAC
+covers only z > 463.3 A, the top 14 A of it; and H at 300 K crosses 53 A in
+~2 ps against a 10 ps (10000-step) check interval, so a desorbed atom typically
+crosses the boundary about five times before the cleanup fix looks once.
+
+Measured in the fixlat rate-A final configuration -- H per 20 A z-bin:
+
+```
+z   0- 20 A :      64 H   <-- bottom face, on the FROZEN layers
+z  20-360 A :       0 H
+z 360-380 A :    1814 H
+z 380-400 A :    7038 H
+z 400-420 A :    7141 H
+z 420-440 A :    8923 H
+```
+
+The MC zone is z = 375..456 A; nothing was ever inserted below 375 A, and the
+340 A of slab between 20 and 360 A holds exactly zero H. Those 64 atoms did not
+diffuse down -- they wrapped through z from the vacuum above the top surface
+onto the rigid bottom face. **The empty middle is the proof:** transport would
+have left a trail, teleportation does not. 0.26 % of the H at that instant, but
+the channel is open all run, it deposits H on an artificial surface, and it
+drains the top surface region, biasing degassing to look faster than it is.
+
+**The process failure is the larger one.** The deviation from Erik's stated
+design appears nowhere -- not in the input header, thread.md, project.md or the
+RESTART-BRIEF. It surfaced only because Erik remembered what he had asked for,
+two weeks and four production runs later. See the "deviation is a reportable
+event" rule in learnings.md, Thread design.
+
+**Target:** `style/lammps.md` 1.13.

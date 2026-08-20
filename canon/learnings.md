@@ -50,6 +50,28 @@ new entries, Erik confirms.
   no mile-pebble.
 - Mile-pebble curation pulls a compressed copy to Mac storage on closure.
   Mount is a window, not a duplicate.
+- **Closure implies compression.** Closing a thread (or a finished part of a
+  project) includes a zstd pass over its bulky artifacts on BOTH trees --
+  dumps and trajectories, `.data`/`.lmps` snapshots, restart files, large raw
+  outputs; `zstd -19`, `.zst` suffix, per L17. Human-readable records
+  (project.md, thread.md, run.yaml, small `.dat` tables, plots) stay
+  uncompressed. Compression commands on the cluster side are strict-A: the
+  pilot prepares, Erik runs. (Erik, 2026-08-06.)
+- **Verify bridge writes by the directory listing, not by re-reading the
+  staged copy.** After `device_commit_files`, confirm with the size and mtime
+  `device_list_dir` reports for the destination path. The staged path under
+  the session's uploads directory is a cache and may serve a snapshot from a
+  previous stage of the same file, so re-staging and reading it back can show
+  old content long after a correct write. A stale read is indistinguishable
+  from a failed write unless you check the listing, and the natural response
+  -- re-send, re-read, see the old content again -- reinforces the wrong
+  conclusion. Same class as the cmmg quirk
+  `sshfs_default_options_show_stale_views`, one layer further out.
+  **Corollary:** never write a claim about the user's filesystem into a project
+  or canon file on the strength of a re-read alone. (2026-08-04: a correct
+  43716-byte write was twice read back as the 39061-byte two-day-old version;
+  the pilot wrote a false "something is reverting this file" warning into
+  SESSIONS.md and a re-entry brief before checking the listing.)
 
 ## Pilot reasoning failures from the 2026-05-29 walk
 
@@ -157,13 +179,28 @@ lesson:
   submits a probe job first. The probe is a clone of the production
   .in with all step counts reduced to 10 and the fix ave/time
   cadence reduced (Nevery=2 Nrepeat=5 Nfreq=10) so all output paths
-  fire within the probe length. 2 MPI tasks (catches parallel-decomp
-  bugs), 5-min walltime, same partition as production. The probe
+  fire within the probe length. Task count is **the smallest that keeps
+  the probe inside a few minutes for this cell and this potential** --
+  floor of 2, never 1, so the parallel decomposition is still
+  exercised. For small cells that is 2; for 1e5-1e6-atom cells or an ML
+  potential it is tens of tasks. Pick it from N_atoms x (measured or
+  estimated) cost per atom-step, and record the count and the reason in
+  thread.md. Walltime cap stays short (<= 20 min); same partition as
+  production. (Amended 2026-08-03: the "2 tasks" constant stood in for
+  "cheap enough that a bad probe costs nothing", which is a function of
+  N_atoms x cost_per_atom_step, not a constant. At 5.7e5 atoms with ACE
+  at 1.86e-4 core-s per atom-step, one FIRE iteration on 2 tasks takes
+  ~530 s and the 5-min cap is violated by the recipe itself.) The probe
   must:
   - exit cleanly (`.err` empty, `.out` ends with "PROBE DONE")
   - reach the "PROBE marker: ALL PHASES COMPLETE" line in the log
-  - emit a `Performance:` line for each `run` block (used to scale
-    the production walltime per L26)
+  - emit a `Performance:` line for each `run` block, or -- where the
+    work is a `minimize` rather than a `run` -- a `Loop time of X on N
+    procs for M steps` line for each minimize block. Either is the L26
+    walltime-calibration source; `minimize` never emits `Performance:`.
+    (Added 2026-08-03: three 10-iteration FIRE probes in
+    ni-dislocs-eam-meam-ace would have been scored as failed by the
+    original wording despite behaving perfectly.)
 
   Only after the probe returns clean does the pilot propose the
   production sbatch. Probe files live alongside their production
@@ -179,6 +216,54 @@ lesson:
   variant. It bakes in L19/L27/L28/L29/L30/L31 so a fresh probe can't
   reintroduce those bugs. The probe doubles as the L26
   walltime-calibration source -- one job, two purposes.
+
+- **Probe exemption -- production cheaper than its own probe.** Where the
+  production job is single-node, few-core and seconds long (a bulk baseline
+  minimization, a capability check, a small static calculation), no separate
+  probe is required: the production job IS the probe. The test is whether a
+  probe would occupy a smaller allocation than the production -- if it would
+  not, it buys nothing but a submit-wait-inspect round trip. Record the waiver
+  and the numbers behind it in the run's thread.md; an unrecorded skip is still
+  a violation. This exemption NEVER applies to a multi-node job, an array, or
+  anything on `p.cmmg`. (2026-08-03, ni-dislocs-eam-meam-ace
+  02_FISCHER-A0-AT-0K: 4000-atom fcc box, 1 core, s.cmmg, ~1-2 s.)
+
+- **Walltime before ranks.** If a task does not fit its `--time`, extend
+  `--time` first (cmmg max 4-00:00:00; padding is free and unused walltime is
+  not billed -- L26). Add ranks only while atoms/core stays above the
+  ~1000-2000 efficiency floor; halving atoms/core below that trades wall-clock
+  for communication overhead and shared-node footprint. State atoms/core
+  whenever proposing a rank change. (2026-08-06, ni-h-diffusivity hydride MSD
+  arrays: the pilot doubled ranks 8 -> 16, i.e. 975 -> 488 atoms/rank, and set
+  72 h rather than simply requesting 96 h at 8 ranks. Erik: "that would just
+  stupidly increase the overhead of communications ... I think max runtime is
+  96h." Both facts were already on record; the failure was not consulting them
+  at decision time.)
+
+- **Two mount failures, opposite fixes (extends L15).** Before calling a
+  cluster mount "down", classify the failure:
+  - *Permission* -- `stat` succeeds but reads or descents return `Operation
+    not permitted`, or the device bridge reports a macOS access denial. The
+    mount is FINE; a macOS TCC grant is stale, usually because the sshfs volume
+    was re-mounted after the folder was connected to the session. Fix:
+    re-connect the folder in the desktop app ("Add folder" re-issues consent
+    against the current volume). Do NOT remount -- remounting replaces the
+    volume a still-good grant points at, so it can invalidate a good grant.
+  - *Staleness* -- listings empty or inconsistent between calls with NO
+    permission error, exact-path reads often still working. This is L15. Fix:
+    remount (`command_example` in `canon/clusters.yaml`).
+
+  Both can be live at once. On 2026-08-20 the permission mode presented as a
+  full top-level listing (55 entries) with EPERM on every descent; after the
+  re-connect, textbook L15 appeared underneath it -- one `results` dir listing
+  its six temperature subdirs by exact path while its sibling returned empty
+  through 8 retries with backoff, and `du -sh` reporting 2.0M for a tree
+  holding 47M in a single subdirectory. In either mode `sacct`, run by Erik,
+  is the arbiter of what ran; never conclude data loss from an unreliable
+  listing. **Escape hatch:** a harvest or status session that must enumerate
+  large cluster trees is better run as Claude Code natively on the Mac (no
+  desktop-app TCC gate, no bridge re-export), or driven by an
+  `rsync`-over-ssh that enumerates cluster-side instead of through sshfs.
 
 - **Harvest the failure mode, not just the failure count.** For every
   task that did not complete, the harvest records: the terminating
@@ -214,6 +299,19 @@ lesson:
   on or follows 01". For genuinely parallel work (EAM vs MEAM in
   Thread 01's case), use co-equal mile-pebbles within one thread
   instead of parallel NN_ threads.
+
+- **A deviation from Erik's stated design is a reportable event.** If the
+  implementation cannot do what he asked, or the pilot judges something else
+  better, that is raised BEFORE submission and recorded in thread.md with the
+  reason. Silently substituting a mitigation for a specified boundary
+  condition, geometry or constraint puts an unreviewed change into production,
+  and the record afterwards shows only the substitute -- so the deviation
+  cannot be found by reading the project, only by remembering the
+  conversation. (2026-08-20, ni-h-hydride-cycle-eam: a requested wall and
+  non-periodic z became `boundary p p p` plus a `fix evaporate` cleanup,
+  unrecorded, across four production runs. L41.)
+- **A run design is not complete until the output set and its cadence are on
+  the record in thread.md** -- see preferences.md "Output style".
 
 ## Process
 
@@ -419,3 +517,22 @@ lesson:
   Likewise, only document real installed tools: example scripts shipped
   in a repo's `examples/`/`scripts/` subfolder are not tools and don't go
   on a card. Both established 2026-06-01 (Erik, on the lego/dcreator cards).
+
+### Tool behaviour -- `fix mc/sites` / `compute sites/voronoi`
+
+- **`metric volume` is the PROBE's Voronoi cell, not the interstice
+  polyhedron.** It measures how much room a particle placed at the site would
+  own, bounded by the surrounding host atoms -- not the geometric volume of the
+  octahedron or tetrahedron. In fcc it is nearly constant (5.35-6.04 A^3 at
+  a = 3.524 A) and the oct and tet populations OVERLAP (oct mean 5.47, max 5.92;
+  tet mean 5.79, min 5.58), so it CANNOT classify sites. Do not design a
+  classifier around the textbook `a^3/6` vs `a^3/24` factor 4; that factor is
+  not what this column reports. Classify on **clearance AND coordination**,
+  requiring both to agree: oct = clearance ~ a/2 (1.725-1.763 A) and
+  `coord 4 3.0` = 6; tet = clearance ~ a*sqrt(3)/4 (1.500-1.538 A) and
+  coord = 16; everything else core-distorted. The check that it is right is
+  that a perfect-lattice region returns the fcc 1:2 oct:tet ratio -- measured
+  33.31 % : 65.92 %, leaving 0.77 % core-distorted, which is the population the
+  science is usually about. Verified 2026-08-04 on 953534 sites
+  (ni-h-at-dislocs-eam-meam thread 01); the first symptom of the wrong
+  classifier was 100 % of sites landing in "oct".

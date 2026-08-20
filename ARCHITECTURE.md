@@ -997,11 +997,21 @@ Every session, at startup, performs the ritual codified in
    in an isolated VM, not on macOS); verify `canon/local/` exists at all;
    verify the simulation root and cluster mount are actually reachable.
    A missing folder is usually just an unconnected one — ask Erik to add
-   it; a connected-but-empty mount means sshfs is down, not that data is
-   gone. Designer work may proceed without them; pilot work may not.
+   it; a connected-but-empty mount is EITHER a stale macOS TCC grant (fix:
+   re-connect the folder) OR sshfs staleness (fix: remount) — classify by
+   whether reads fail with a permission error, and never conclude the data
+   is gone. Designer work may proceed without them; pilot work may not.
 
 1. Read `<REPO_ROOT>/SESSIONS.md` (active-sessions dashboard),
    resolved relative to this repo.
+1b. Reconcile open loops (added 2026-08-20): if ANY entry — `active` or
+   `recently_closed` — has a non-empty `in_flight`, get one `sacct` line
+   from Erik and reconcile it before asking for scope, then clear the
+   reconciled fields. An open loop belongs to the framework, not to a
+   project: `in_flight` was a note to a resuming session, and between
+   2026-08-04 and 2026-08-20 four projects' handed-over submissions went
+   unreconciled for 13–15 days because that session never came — including
+   one silent FAILURE nobody saw for a fortnight.
 2. Ask Erik (via `AskUserQuestion` or chat) the mode and the scope.
 3. Cross-check against the dashboard:
    - pilot on a scope already owned → warn and ask whether to take
@@ -1088,6 +1098,11 @@ ongoing operations), `notes`.
 Self-registration is automatic on session startup; `last_active` is
 updated by the session on every major action; the entry moves to
 `recently_closed` on wrap-up.
+
+`in_flight` is the one field whose obligation OUTLIVES its entry: an open
+loop is not owned by the session that opened it. A session that closes with a
+non-empty `in_flight` states that in its `summary:`, and the NEXT session of
+any scope reconciles it at startup (§17.4 step 1b). Added 2026-08-20.
 
 ### 17.7 Proposal inbox (canon/proposals-inbox.md)
 
