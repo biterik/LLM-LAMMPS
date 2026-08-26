@@ -550,7 +550,7 @@ last_index_updated: 2026-08-26T14:40Z   # real UTC
     over staging + re-probe (strict-A). No production submits until
     probes pass.
 - started: 2026-08-25T15:36Z
-- last_active: 2026-08-26T11:30Z
+- last_active: 2026-08-26T12:15Z
 - simulation_root: ~/Desktop/SIMULATIONS   # confirmed by Erik (AskUserQuestion)
 - machine: M5
 - owns_writes_to:
@@ -647,7 +647,10 @@ last_index_updated: 2026-08-26T14:40Z   # real UTC
     gates + L26 recalibration. PROBES BOTH PASSED (2026-08-26 ~11:30Z):
     a0 = 3.5784, layer spacing clean, slab survives, 135 steps/s (cutoff
     costs ~nothing). PRODUCTION PREPARE handed over (--array=2-3);
-    ladder waits on cell gates.
+    CELLS VALIDATED 12:15Z (layer spacing 1.789 vs a0/2 within 0.2%,
+    halves correct; one stale-sshfs EPERM incident bridged via Erik's
+    shell + fixed by remount). LARGE-BOX LADDER handed over
+    (--array=0-6, Pezold, NGUARD=2000, ~30 min/rung).
     sbatch submit-measure-melting_Ni-melting.probe.slurm (T=1450 K, 2 ps,
     consumes the prepare probe's cell; also the L26 walltime source for
     measure production). History: attempt 2 passed mechanical gates but the
