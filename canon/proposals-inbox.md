@@ -3048,7 +3048,7 @@ proposed_at: 2026-08-25T17:40Z
 target_file: canon/style/lammps.md
 target_section: new numbered rule (barostats + frozen groups), near 1.13 boundary-conditions
 priority: routine
-status: pending
+status: merged                          # 2026-08-26 by session 2026-08-26-1305
 ---
 
 ## Proposed rule
@@ -3084,7 +3084,22 @@ rules"). Not mechanically lintable: needs the design intent.
 
 ## Designer review notes
 
-[pending]
+MERGED 2026-08-26 (session 2026-08-26-1305-notify-email-body), SPLIT as the
+proposal invited. Both halves landed in style/lammps.md as ONE new rule 1.18
+("A barostat remaps EVERY atom by default"), numbered 1.18 but placed
+physically right after 1.13 so it sits with its topical neighbours -- the file
+is already non-monotonic (1.11, 1.10, 1.9) and stable numbers matter more than
+order, because other canon files cite them. The LAMMPS semantics half is the
+rule body, with the `dilate HOT` form and the fix_nh.html substrate example;
+the "quantify held-fixed" half is its corollary, sharpened with WHY the obvious
+check fails -- an fcc percentage is invariant under uniform strain and reports
+a perfect crystal at 8 % misfit. The probe-discipline generalisation of that
+corollary lives in learnings.md "A gate is a mechanism, not a sign and not a
+marker", merged in the same pass from 2026-08-25-2130, and the two cross-
+reference each other. Not lintable, as the proposal said: `dilate all` is the
+DEFAULT, so there is no token to grep for -- absence of `dilate` is the smell,
+but it is only a smell (plenty of correct barostats have no held group at
+all), and a linter that cries on every npt would be turned off within a week.
 
 ---
 proposal_id: 2026-08-25-2010-empty-listing-mitigations-superseded
@@ -3147,7 +3162,19 @@ provenance line, because that is the reusable half.
 ## 2026-08-25-2015-wall-fixes-need-nonperiodic-dims
 
 - filed_by: 2026-08-25-1725-nih-two-project-status (pilot)
-- status: pending
+- status: merged        # 2026-08-26, session 2026-08-26-1305-notify-email-body
+- designer_review: |
+    MERGED IN FULL, both halves. Rule -> style/lammps.md 1.13, appended to the
+    existing L41 vacuum-gap paragraph rather than given its own number: the two
+    belong together, because the wall is what the vacuum-gap rule tells you to
+    add and the boundary change is what this one says must ride along in the
+    SAME edit. Lint gate -> templates/lint-lammps-input.sh, implemented as
+    proposed (parse the last `boundary` line, map each wall face keyword onto
+    its axis, fail on p). VERIFIED BOTH DIRECTIONS: fires on a reconstruction
+    of the real bug (p p p + wall zhi), and passes the two REAL fixed inputs
+    (threads 03/04, `boundary p p f` + `fix WALL MOBILE wall/reflect zhi`), a
+    no-wall input, and an x-axis wall on a non-periodic x. Merged first of the
+    three because it is the only mechanically lintable one.
 - target: canon/style/lammps.md 1.13 (+ lint-lammps-input.sh gate)
 - observation: |
     fix wall/reflect (and the fix wall/* family) REFUSES to act in a
@@ -3179,7 +3206,7 @@ proposed_at: 2026-08-25T21:30Z
 target_file: canon/learnings.md
 target_section: Workflow rules (probe discipline)
 priority: routine
-status: pending
+status: merged                          # 2026-08-26 by session 2026-08-26-1305
 ---
 
 ## Proposed rule
@@ -3215,4 +3242,23 @@ it is a physics-review step for the probe-gate checklist.
 
 ## Designer review notes
 
-[pending]
+MERGED 2026-08-26 (session 2026-08-26-1305-notify-email-body), SPLIT across
+two files exactly as the proposal suggested it might need to be.
+(1) The probe-discipline half -> learnings.md "Workflow rules", as
+    "A gate is a mechanism, not a sign and not a marker", with two corollaries:
+    a held quantity is verified against a number not a picture (pointing at
+    style 1.18, merged in the same pass), and green mechanical gates say the
+    job RAN, not that it measured anything -- every probe needs at least one
+    gate a physically wrong run would fail. That last clause is this session's
+    addition, not the proposal's, and it is the part that generalises beyond
+    melting points.
+(2) The confinement-freezing half -> style/lammps.md 1.19, "A held rigid
+    crystal template ORDERS the liquid beside it", keeping the ~1 nm per-wall
+    reach, the <2-3 nm film threshold, the PBC-counts-as-the-second-face
+    clause, and the three escapes (check the thickness, keep the stage to a
+    few ps, or thermalise the template).
+Kept deliberately: the proposing session's own framing that the design error
+was its own. The reusable half of this proposal is the question that was not
+asked -- WHERE is the signal coming from -- not the melting-point physics, and
+that reads better in the first person than sanded down into canon voice.
+Not lintable; it is a physics-review step on the probe-gate checklist.

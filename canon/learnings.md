@@ -73,6 +73,32 @@ new entries, Erik confirms.
   the pilot wrote a false "something is reverting this file" warning into
   SESSIONS.md and a re-entry brief before checking the listing.)
 
+- **A gate is a mechanism, not a sign and not a marker.** A probe observable
+  moving in the EXPECTED direction is not a passed gate until the mechanism is
+  checked: ask WHERE the signal comes from spatially, and whether the dynamics
+  responsible for it is the dynamics the production run will have. The
+  question is cheap -- usually one `awk` pass over a profile the probe already
+  wrote -- and it is the only thing standing between a green probe and a
+  production run that measures the wrong process. Two corollaries, both paid
+  for in cluster time:
+  - **A quantity that is "held" is verified against a number, not a picture.**
+    See `style/lammps.md` 1.18: an fcc percentage is invariant under uniform
+    strain and will report a perfect crystal at 8 % misfit.
+  - **Green mechanical gates say the job ran, not that it measured anything.**
+    ALL PHASES COMPLETE, an empty `.err` and a full set of `Performance:`
+    lines are necessary and nowhere near sufficient. Every probe needs at
+    least one gate that a physically wrong run would FAIL.
+
+  Where it bit: 2026-08-25, ni-melting-point-eam thread 01. The measure probe
+  at 1450 K showed fcc rising in the liquid region -- the desired
+  "freezing below Tm" sign -- and was passed. The rise was epitaxial freezing
+  of a 15 A liquid film against the rigid guarded-settle template
+  (`style/lammps.md` 1.19). The 7-rung production ladder then ran on cells
+  whose liquid had crystallized BEFORE measurement start, and ~3.5 h of
+  cluster time measured crystal annealing. The design error was the proposing
+  session's own; it is recorded here in its own words because the reusable
+  half is the question it did not ask, not the physics it got wrong.
+
 ## Pilot reasoning failures from the 2026-05-29 walk
 
 These are specific reasoning errors Erik called out, distinct from the

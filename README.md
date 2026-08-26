@@ -139,6 +139,15 @@ gh repo create __GH__/llm-lammps-local --private --source=. --push
 git clone git@github.com:__GH__/llm-lammps-local.git <REPO_ROOT>/canon/local
 ```
 
+**The two repos need not share a default branch name, and here they do not:**
+this repo pushes `master`, the overlay pushes `main` (`gh repo create` and
+`git init` have defaulted differently over the years). A copy-pasted
+`git push origin master` therefore fails in the overlay with
+`src refspec master does not match any` -- which reads like a broken remote
+and is only a wrong branch name. Check with `git status -sb` (its first line
+names the branch and its upstream) rather than assuming; or push with
+`git push origin HEAD`, which is branch-name agnostic and works in both.
+
 Alternative (no second repo): keep the folder in iCloud Drive and symlink it in.
 Config-sized, so it does not violate the "research data never goes in iCloud"
 rule — but no history, and iCloud can serve a stale copy right after an edit

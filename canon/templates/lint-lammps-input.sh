@@ -105,6 +105,36 @@ else
 fi
 pass "L2 — ASCII only"
 
+# §1.13 — a fix wall/* face must sit on a NON-PERIODIC axis
+#   LAMMPS: "Cannot use fix wall/reflect in periodic dimension z". Map each
+#   wall face keyword (xlo/xhi/ylo/yhi/zlo/zhi) onto its axis, then read that
+#   axis's char from the last `boundary` line. Killed 4 probe tasks 2026-08-25.
+BOUNDARY_LINE=$(grep -E '^[[:space:]]*boundary[[:space:]]' "$INPUT" | tail -1 || true)
+if [[ -n "$BOUNDARY_LINE" ]]; then
+  read -r _kw BX BY BZ _rest <<<"$BOUNDARY_LINE"
+  WALL_LINES=$(grep -nE '^[[:space:]]*fix[[:space:]]+.*[[:space:]]wall/' "$INPUT" || true)
+  if [[ -n "$WALL_LINES" ]]; then
+    while IFS= read -r wl; do
+      [[ -z "$wl" ]] && continue
+      for face in xlo xhi ylo yhi zlo zhi; do
+        if grep -qE "(^|[[:space:]])${face}([[:space:]]|$)" <<<"$wl"; then
+          case "${face:0:1}" in
+            x) bc="$BX" ;;
+            y) bc="$BY" ;;
+            z) bc="$BZ" ;;
+          esac
+          # a boundary char may be doubled (`pp`, `fs`); a wall needs the axis
+          # non-periodic on the relevant side, so reject any p in the field.
+          case "$bc" in
+            *p*) fail "1.13 — 'fix wall/*' acts on face ${face} but 'boundary' gives '${bc}' for that axis. LAMMPS rejects a wall in a periodic dimension at init; set the axis to f (or s/m) in the SAME edit. Offending line: ${wl}" ;;
+          esac
+        fi
+      done
+    done <<<"$WALL_LINES"
+  fi
+  pass "1.13 — no fix wall/* on a periodic axis"
+fi
+
 # §1.5 — fix print not used inside minimize block (L5)
 #   Scan the lines between the first `minimize` and the next `run` or EOF.
 #   If any `fix ... all print ...` appears in that range, fail.

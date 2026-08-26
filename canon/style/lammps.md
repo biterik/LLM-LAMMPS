@@ -258,6 +258,78 @@ grep -nE 'fix .*(wall/reflect|evaporate)|^region .*(VAC|vac)' <input>
 If `boundary` has `p` on an axis that has vacuum on it, either there is a wall
 or there is a defect. Read which. See L41.
 
+**A wall is not a patch on a periodic axis -- it REQUIRES the axis
+non-periodic.** If a `fix wall/*` acts in dimension D, the boundary in D must
+be `f` (or `s`/`m`). LAMMPS rejects the combination at init:
+
+```
+ERROR: Cannot use fix wall/reflect in periodic dimension z
+(src/fix_wall_reflect.cpp:110)
+```
+
+The two halves of the previous paragraph therefore travel together: when a wall
+is added to close the L41 vacuum-gap hole, **change the boundary in the same
+edit**. `p` plus a wall is not a stricter version of `p` -- it is a job that
+dies in the first second. Changing the axis to `f` is also the honest geometry:
+the slab's faces become genuinely disconnected, which is what the wall was for.
+
+Where it bit: 2026-08-25, ni-h-hydride-cycle-eam threads 03 and 04. A
+reflecting wall at 134 a0 was added to fix the L41 re-entry while `boundary p p
+p` stayed. All four probe tasks (`22728943_[0-1]`, `22728944_[0-1]`) died at
+init. The command had been doc-checked for SYNTAX but not for this
+PRECONDITION -- the class §1.9 exists to catch. Mechanically linted since
+2026-08-26; see `templates/lint-lammps-input.sh`.
+
+### 1.18 A barostat remaps EVERY atom by default (`dilate all`)
+
+`fix npt` / `fix nph` and friends default to `dilate all`: the box remap is
+applied affinely to every atom in the cell, including atoms in a group you
+believe you are holding still. `velocity ... zero` and `fix setforce 0 0 0`
+stop a group's *dynamics*; they do not exempt it from the *remap*. A "frozen"
+substrate under a barostatted region is therefore strained silently, by exactly
+the box strain.
+
+Restrict the remap to the mobile group, and define the barostat on it:
+
+```
+fix MELT HOT nph x <...> dilate HOT       # not `dilate all`
+```
+
+(The `dilate <group>` example in `fix_nh.html` is precisely this case: a solid
+substrate under a barostatted fluid.)
+
+**Corollary, and the half that costs more: "held fixed" is a QUANTITATIVE
+probe gate.** Verify it from the probe snapshot against a number you already
+know -- layer spacing against a0/2, or displacement against the reference
+configuration -- never from a picture, and never from an fcc percentage, which
+is invariant under a uniform strain and will happily report a perfect crystal.
+
+Where it bit: 2026-08-25, ni-melting-point-eam thread 01, prepare probe attempt
+2. EVERY mechanical gate passed -- ALL PHASES COMPLETE, clean `.err`, hot half
+molten -- while the "frozen" cold half sat at 8 % uniaxial strain: x layer
+spacing 1.94 A against a0/2 = 1.794 A, exactly the box expansion. The
+layer-spacing histogram settled in one pass what four green gates had missed.
+
+### 1.19 A held rigid crystal template ORDERS the liquid beside it
+
+Any stage that equilibrates a liquid against a HELD (rigid) crystal template
+must budget for epitaxial and confinement freezing. A commensurate liquid film
+thinner than ~2-3 nm between template faces -- **and periodicity counts as the
+second face** -- can crystallize ABOVE the bulk melting point, because the
+ordering reach of each wall is ~1 nm and the two reaches meet.
+
+Rules: check the film thickness against that reach before trusting any stage
+that holds a template; keep such stages to the few-ps minimum; or thermalize
+the template instead of freezing it. If the geometry cannot avoid it, the
+observable must be measured somewhere the template's reach does not arrive.
+
+Where it bit: 2026-08-25, ni-melting-point-eam. A guarded settle froze a 15 A
+liquid film at EVERY rung of the cube ladder; the full 7-rung production then
+measured cells whose liquid had already crystallized (transverse-order minimum
+0.38-0.54 in every final configuration, no melting even at 1600 K). See the
+Workflow rule "A gate is a mechanism, not a sign" in `../learnings.md` -- this
+rule is its physical half.
+
 ### 1.14 Per-atom stress and energy at finite T
 
 A single-snapshot per-atom stress or energy at finite temperature is dominated

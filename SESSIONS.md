@@ -8,7 +8,7 @@ LLM-LMPS Cowork session self-registers on startup, updates
 See ARCHITECTURE.md §17 (Concurrency model) for the rules and
 `canon/session-startup.md` for the startup ritual.
 
-last_index_updated: 2026-08-26T14:40Z   # real UTC
+last_index_updated: 2026-08-26T15:20Z
 
 ---
 
@@ -217,7 +217,7 @@ last_index_updated: 2026-08-26T14:40Z   # real UTC
     the proposals inbox (Erik asked). NO pilot work, NO project trees, NO
     submissions.
 - started: 2026-08-26T13:05Z
-- last_active: 2026-08-26T15:30Z
+- last_active: 2026-08-26T15:55Z
 - simulation_root: n/a (designer-only session; not asked, not needed)
 - machine: M5   # canon/local/.this-machine
 - cluster_identity: |
@@ -340,7 +340,79 @@ last_index_updated: 2026-08-26T14:40Z   # real UTC
         is CHAT ONLY, the entry records the placeholder form, and run paths
         in in_flight/notes are written in placeholder form too, with
         lint-no-identity named as the pre-push guard.
-    NOT COMMITTED, deliberately -- see notes.
+    PUSHED 2026-08-26T15:1xZ. Public repo: rebased onto the remote's
+    1ee2418 (Erik's own PR #1, adds only .github/workflows/repo-vitals.yml
+    -- disjoint file sets, no conflicts) and pushed as 1ee2418..b2ca851.
+    Locks cleared, `git gc` ran: 0 loose objects, 344 in-pack. Post-merge
+    lint CLEAN.
+    KEY FINDING, checked commit by commit over the whole published history:
+    the real cluster identity was NEVER PUSHED. The only identity token in
+    any published commit is the GitHub handle (3 occurrences, in
+    github.com/<GITHUB_USER>/... URLs and the action ref), which is public
+    by construction. Today's scrub was PREVENTIVE -- the 24 values had
+    accumulated in tracked files that had not yet been pushed. No history
+    rewrite needed, no force-push anywhere. Recorded because the opposite
+    conclusion ("we leaked, rewrite history") was the plausible one and is
+    expensive and irreversible.
+    LINTER AMENDED: `.github/` joins `canon/local/` in the skip list. The
+    incoming workflow carries Erik's author byline and institutional
+    address, and deploy/rollout.sh REGENERATES those files, so a hand-scrub
+    would be undone at the next rollout. The linter guards CLUSTER identity,
+    not authorship of a public repo. Verified by staging the incoming file
+    and re-running the lint.
+    TWO BLEMISHES, left alone deliberately: (a) two commits carry the same
+    message -- 5164207 is the real one, b2ca851 is a 5-line SESSIONS.md
+    follow-up written by a LIVE session between Erik's two `git add -A`
+    runs, so the message is misleading but the content is right; rewriting
+    pushed history to fix a commit message is not worth it. (b) 29
+    tmp_obj_* files survive `git gc` because gc.pruneExpire defaults to two
+    weeks and they are six days old; `git gc --prune=now` clears them, or
+    they expire on 2026-09-03.
+    OVERLAY PUSH FAILED, my error: I handed `git push origin master` for
+    BOTH repos, but the overlay's branch is `main`. Class fix in README
+    (section 3): the two repos do not share a default branch name; check
+    `git status -sb` or push `HEAD`, which is branch-name agnostic.
+- third_pass: |
+    INBOX CLEARED 2026-08-26T15:3x-15:5xZ, same designer lock. NOTHING PENDING.
+    (1) 2026-08-25-2015 wall-fixes-need-nonperiodic-dims -> style/lammps.md
+        1.13, APPENDED to the existing L41 vacuum-gap paragraph rather than
+        given its own number: the wall is what the L41 rule tells you to add,
+        and this rule says the boundary change must ride along in the SAME
+        edit -- they are one instruction, not two. LINT GATE added to
+        lint-lammps-input.sh as the proposal specified (parse the last
+        `boundary` line, map each wall face keyword to its axis, fail on p).
+        VERIFIED BOTH DIRECTIONS on real files: fires on a reconstruction of
+        the killed probe (p p p + wall zhi), passes the two REAL fixed inputs
+        (hydride-cycle threads 03/04), a no-wall input, and an x-axis wall on
+        a non-periodic x. Regression: the older L1/L44/L45 gates still fire,
+        and 12 recent .in files across SIMULATIONS still lint clean.
+    (2) 2026-08-25-1740 barostat-dilate-defaults-to-all -> style/lammps.md
+        NEW 1.18. Numbered 1.18, placed physically after 1.13 (the file is
+        already non-monotonic; stable numbers beat file order because other
+        canon cites them). Semantics half = rule body with `dilate HOT` and
+        the fix_nh.html substrate example; "quantify held-fixed" half = its
+        corollary, sharpened with WHY the obvious check fails (an fcc
+        percentage is invariant under uniform strain -- it reports a perfect
+        crystal at 8 % misfit). Deliberately NOT linted: `dilate all` is the
+        DEFAULT, so there is no token to grep; absence of `dilate` is a smell
+        only, and a gate that cries on every npt gets switched off.
+    (3) 2026-08-25-2130 desired-sign-is-not-a-passed-gate -> SPLIT.
+        Probe-discipline half -> learnings.md Workflow rules, "A gate is a
+        mechanism, not a sign and not a marker". Confinement half ->
+        style/lammps.md NEW 1.19, "A held rigid crystal template ORDERS the
+        liquid beside it" (~1 nm per-wall reach, <2-3 nm film, PBC counts as
+        the second face, three escapes). The two cross-reference each other.
+        ADDED beyond the proposal: "green mechanical gates say the job RAN,
+        not that it measured anything -- every probe needs at least one gate
+        a physically wrong run would FAIL." That is the clause that
+        generalises past melting points. KEPT: the proposing session's
+        first-person framing that the design error was its own; the reusable
+        half is the question it did not ask, and it reads better unsanded.
+    COMMON THREAD, recorded because it is the reason all three existed: each
+    is a PRECONDITION no syntax check catches -- a wall needs a non-periodic
+    axis, a barostat needs an explicit dilate group, a probe gate needs a
+    mechanism. Style 1.9 already names the class; these are three instances,
+    and only the first is machine-checkable.
 - inbox_readout: |
     Reported to Erik, NOT merged (he asked what is in the inbox, not for a
     merge pass). FOUR pending: 2026-08-25-1740 barostat-dilate-defaults-to-
@@ -673,130 +745,6 @@ last_index_updated: 2026-08-26T14:40Z   # real UTC
     (docs.lammps.org/variable.html); thread.md carries the full write-up.
     Canon proposal filed: 2026-08-25-1545-no-dollar-substitution-inside-
     formulas (style rule + two style-walk greps).
-
-### session_id: 2026-08-25-1105-sim-status
-- mode: pilot
-- scope: |
-    Started as a READ-ONLY status readout ("status about our last
-    simulations"). PROMOTED at Erik's choice (AskUserQuestion) to harvest +
-    analysis of ni-h-at-dislocs-eam-meam thread 01 run 01 (d90 relaxed
-    binding). No cluster writes, no submissions.
-- started: 2026-08-25T11:05Z
-- last_active: 2026-08-25T13:10Z
-- simulation_root: ~/Desktop/SIMULATIONS   # connected mid-session by Erik,
-    together with cluster-mounts/cmmg (mount healthy throughout; one L15
-    stale-view episode ~12:59-13:14 CEST diagnosed live, remount + folder
-    re-connect fixed it)
-- machine: M5
-- owns_writes_to:
-  - LLM-LAMMPS-public/SESSIONS.md (this entry, plus the step-1b
-    reconciliation of 2026-08-24-1531's in_flight, per session-startup 1b)
-  - SIMULATIONS/Ni-H-AT-DISLOCS-EAM-MEAM/01_H-BINDING-MAP-D90-0K/**  (added 11:20Z)
-- scope_change: |
-    PROMOTED read-only -> write ownership of thread 01 harvest+analysis,
-    2026-08-25T11:20Z, Erik's pick from the offered next steps.
-    PROMOTED pilot -> designer+pilot 2026-08-25T~12:30Z at Erik's explicit
-    request ("as designer, can you implement the items in your inbox?").
-    DESIGNER LOCK TAKEN, verified free: 2026-08-24-0753 released it
-    17:35Z on 08-24 (its designer_addendum says so explicitly); the only
-    other claim, 2026-08-20-1145-cluster-status-sweep, is 5 days stale and
-    was already overridden by the 08-24 pass. Designer area: merge the
-    proposals inbox + the duplicate-L41 repair found while merging; nothing
-    else touched under the lock. LOCK RELEASED 2026-08-25T~13:10Z after the
-    pass (mode back to pilot for any further project work).
-    TAKEOVER, ON THE RECORD: 2026-08-24-1531-nih-at-dislocs-status (1 day
-    old, conversation ended, in_flight discharged by this session's
-    reconciliation) declares the same tree. Only its thread-01 scope is
-    taken; threads 04/05 (d0/d30) are NOT taken. Erik told, in-turn.
-- work_done: |
-    RUN 01 HARVESTED AND ANALYSED, 2026-08-25T11:10-11:35Z.
-    Harvest (curated, via device_bash cp mount -> SIMULATIONS, verified by
-    byte counts): production .dat, subset table, .in, selector, site feeds
-    into 01_RELAXED-BINDING-SUBSET/relaxedbind-d90-Pezold-EAM-0K/. Logs and
-    slurm .out/.err stay on the cluster; gate numbers recorded in thread.md.
-    ANALYSIS (script + per-site table + fig5 in 01_RELAXED-BINDING-SUBSET/):
-      * Gate 1 restore 0.0000 meV on all 372; rigid cross-check to run-00
-        map <= 1e-6 eV; 360/372 sites convergence-assured (all 12
-        non-assured are radial-ladder sites whose H migrated or hit the
-        20000-iteration cap; worst gap 439.8 meV = site 373499 falling into
-        373550's basin).
-      * HEADLINE: relaxation makes the deepest oct trap SHALLOWER,
-        -0.1464 -> -0.1311 eV, so mu_core = -2.4061 eV (was "-2.421 upper
-        bound" -- premise measured false). Enrichment 159x at 300 K.
-        Thread-02 grid -2.471..-2.291 CONFIRMED, no re-centring.
-      * FUNNELING: 43 deep sites -> ~8 relaxed basins (14 oct sites share
-        E_ins_tight -2.242994 eV to 1 ueV across r = 3.8-12.3 A).
-      * Tet per-family trap deepens -0.1331 -> -0.1500 eV but sits +0.256 eV
-        above bulk oct: no dilute-limit tet trapping. Relaxed bulk tet-oct
-        splitting +0.4066 eV (rigid +0.5487).
-      * Reach: |E_seg| < 10 meV beyond r = 60 A; +-70 A MC zone vindicated.
-    thread.md updated: run-01 RESULTS section, run status COMPLETE, the
-    section-5 "upper bound" claim superseded on the record.
-- designer_pass: |
-    INBOX MERGED 2026-08-25T~12:30-12:50Z under the lock (see scope_change).
-    (1) proposal 2026-08-25-1200-mount-background-traversers -> MERGED into
-        learnings.md "Cluster discipline" as "Background traversers on the
-        mount", updated with the post-filing evidence (VM identity confirmed,
-        ls-vs-exact-path-stat discriminant verified live, GUI route for the
-        Time Machine exclusion).
-    (2) proposal 2026-07-30-0934-promote-mu-scan-loader-to-tool -> still
-        PENDING, third consecutive review, same verdict: the tool must exist
-        (own repo, deployed) before a card can land; needs its own dev
-        session starting from nih_loaders.py with the ave/trace schema
-        pinned. Erik told in-turn; now the only pending inbox item.
-    (3) SEVEN NON-SCHEMA ENTRIES FOUND AND MERGED. The pass first
-        (wrongly) declared the two 08-24 filings missing: a `^proposal_id:`
-        grep misses entries filed as bare `## <id>` headings, and SEVEN such
-        entries existed -- five from 2026-08-05 (skipped by two designer
-        passes) and the two from 08-24. Corrected in the same pass; a new
-        inbox Conventions bullet mandates sweeping both patterns and
-        reconciling SESSIONS.md "filed as proposal" claims before declaring
-        the inbox empty. Merged: 2026-08-24-0930 + 2026-08-05-1105 folded
-        into ONE learnings.md Process rule ("Scalar-reducing helpers name
-        their convergence filter; a verdict for question A is not a quality
-        label for question B" -- the naive always-filter-on-converged form
-        would have repeated the 08-05 ln-x mistake); 2026-08-24-1558 ->
-        learnings.md Process ("A fix applied on one side lands on both
-        sides", incl. the resume-after-failure cmp clause);
-        2026-08-05-1100 -> lessons.md L43 (guard-band the block averages);
-        2026-08-05-1110 -> preferences.md Plot defaults (widest interval
-        with no converged state); 2026-08-05-1115 -> style/lammps.md 1.15
-        (derived diagnostic columns must earn their place);
-        2026-08-05-1210 -> learnings.md Cluster discipline (health-check a
-        mount at the depth the work needs). mu_at_half CODE not changed --
-        that fix belongs to the next ni-h-phase-diagram scope holder.
-    (4) HOUSEKEEPING under the lock: lessons.md carried TWO lessons numbered
-        L41 (vacuum-gap, 08-20; hostname/placeholders, 08-24). The 08-24
-        hostname lesson is renumbered L42 with a renumbering note; its
-        citations in preferences.md and session-startup.md updated. Older
-        SESSIONS.md entries that say "gains L41" are left as historical
-        record.
-- in_flight: (none)
-- notes: |
-    designer lock NOT taken. Mount cluster-mounts/cmmg is HEALTHY this
-    session: listings and exact-path reads both work (d90 run-01 output
-    dir listed, .out staged and read). Session also debugged the Mac
-    sshfs mount infrastructure earlier in the conversation (outside
-    framework scope; symptom: mounts silently disappear during work).
-    STEP-1b RECONCILIATION done from run outputs on the mount, then
-    CLOSED by Erik's sacct paste (2026-08-25T~11:10Z,
-    `sacct -X -S 2026-08-24`):
-      22719302 NiH-HBIND-RELAX-D90-EAM      COMPLETED 01:16:47  0:0
-        -> the d90 thread-01 run-01 production; job ID now recorded.
-      22719558 NiH-BINDMAP-D0-EAM-PROBE     COMPLETED 00:09:55  0:0
-      22719559 NiH-BINDMAP-D30-EAM-PROBE    COMPLETED 00:09:01  0:0
-        -> Erik submitted the d0/d30 run-00 probes 2026-08-24 evening.
-        GATES NOT YET CHECKED (PROBE DONE / ALL PHASES COMPLETE /
-        site counts / L26 cost). NEXT ACTION for whoever takes threads
-        04/05: check gates, then hand over the two production sbatches.
-      22719499 nimelt-t01-prepare-probe     FAILED 00:00:18  1:0
-        -> OPEN LOOP, ni-melting-point-eam (scope of 2026-08-24-0753):
-        probe died in 18 s, undiagnosed. Flagged to Erik in-turn; not
-        this session's scope.
-    STALE active entries, re-flagged: 2026-08-05-1425-mcsites-
-    presentation, 2026-08-03-1401-nih-at-dislocs-design,
-    2026-08-02-1647-ingest-eam-dislocs-ni-cu, 2026-08-20-1145-cluster-
-    status-sweep.
 
 ### session_id: 2026-08-24-1531-nih-at-dislocs-status
 - mode: pilot
@@ -2110,6 +2058,151 @@ last_index_updated: 2026-08-26T14:40Z   # real UTC
 ---
 
 ## recently_closed
+
+### session_id: 2026-08-25-1105-sim-status
+- mode: pilot
+- scope: |
+    Started as a READ-ONLY status readout ("status about our last
+    simulations"). PROMOTED at Erik's choice (AskUserQuestion) to harvest +
+    analysis of ni-h-at-dislocs-eam-meam thread 01 run 01 (d90 relaxed
+    binding). No cluster writes, no submissions.
+- started: 2026-08-25T11:05Z
+- last_active: 2026-08-25T13:10Z
+- simulation_root: ~/Desktop/SIMULATIONS   # connected mid-session by Erik,
+    together with cluster-mounts/cmmg (mount healthy throughout; one L15
+    stale-view episode ~12:59-13:14 CEST diagnosed live, remount + folder
+    re-connect fixed it)
+- machine: M5
+- owns_writes_to:
+  - LLM-LAMMPS-public/SESSIONS.md (this entry, plus the step-1b
+    reconciliation of 2026-08-24-1531's in_flight, per session-startup 1b)
+  - SIMULATIONS/Ni-H-AT-DISLOCS-EAM-MEAM/01_H-BINDING-MAP-D90-0K/**  (added 11:20Z)
+- scope_change: |
+    PROMOTED read-only -> write ownership of thread 01 harvest+analysis,
+    2026-08-25T11:20Z, Erik's pick from the offered next steps.
+    PROMOTED pilot -> designer+pilot 2026-08-25T~12:30Z at Erik's explicit
+    request ("as designer, can you implement the items in your inbox?").
+    DESIGNER LOCK TAKEN, verified free: 2026-08-24-0753 released it
+    17:35Z on 08-24 (its designer_addendum says so explicitly); the only
+    other claim, 2026-08-20-1145-cluster-status-sweep, is 5 days stale and
+    was already overridden by the 08-24 pass. Designer area: merge the
+    proposals inbox + the duplicate-L41 repair found while merging; nothing
+    else touched under the lock. LOCK RELEASED 2026-08-25T~13:10Z after the
+    pass (mode back to pilot for any further project work).
+    TAKEOVER, ON THE RECORD: 2026-08-24-1531-nih-at-dislocs-status (1 day
+    old, conversation ended, in_flight discharged by this session's
+    reconciliation) declares the same tree. Only its thread-01 scope is
+    taken; threads 04/05 (d0/d30) are NOT taken. Erik told, in-turn.
+- work_done: |
+    RUN 01 HARVESTED AND ANALYSED, 2026-08-25T11:10-11:35Z.
+    Harvest (curated, via device_bash cp mount -> SIMULATIONS, verified by
+    byte counts): production .dat, subset table, .in, selector, site feeds
+    into 01_RELAXED-BINDING-SUBSET/relaxedbind-d90-Pezold-EAM-0K/. Logs and
+    slurm .out/.err stay on the cluster; gate numbers recorded in thread.md.
+    ANALYSIS (script + per-site table + fig5 in 01_RELAXED-BINDING-SUBSET/):
+      * Gate 1 restore 0.0000 meV on all 372; rigid cross-check to run-00
+        map <= 1e-6 eV; 360/372 sites convergence-assured (all 12
+        non-assured are radial-ladder sites whose H migrated or hit the
+        20000-iteration cap; worst gap 439.8 meV = site 373499 falling into
+        373550's basin).
+      * HEADLINE: relaxation makes the deepest oct trap SHALLOWER,
+        -0.1464 -> -0.1311 eV, so mu_core = -2.4061 eV (was "-2.421 upper
+        bound" -- premise measured false). Enrichment 159x at 300 K.
+        Thread-02 grid -2.471..-2.291 CONFIRMED, no re-centring.
+      * FUNNELING: 43 deep sites -> ~8 relaxed basins (14 oct sites share
+        E_ins_tight -2.242994 eV to 1 ueV across r = 3.8-12.3 A).
+      * Tet per-family trap deepens -0.1331 -> -0.1500 eV but sits +0.256 eV
+        above bulk oct: no dilute-limit tet trapping. Relaxed bulk tet-oct
+        splitting +0.4066 eV (rigid +0.5487).
+      * Reach: |E_seg| < 10 meV beyond r = 60 A; +-70 A MC zone vindicated.
+    thread.md updated: run-01 RESULTS section, run status COMPLETE, the
+    section-5 "upper bound" claim superseded on the record.
+- designer_pass: |
+    INBOX MERGED 2026-08-25T~12:30-12:50Z under the lock (see scope_change).
+    (1) proposal 2026-08-25-1200-mount-background-traversers -> MERGED into
+        learnings.md "Cluster discipline" as "Background traversers on the
+        mount", updated with the post-filing evidence (VM identity confirmed,
+        ls-vs-exact-path-stat discriminant verified live, GUI route for the
+        Time Machine exclusion).
+    (2) proposal 2026-07-30-0934-promote-mu-scan-loader-to-tool -> still
+        PENDING, third consecutive review, same verdict: the tool must exist
+        (own repo, deployed) before a card can land; needs its own dev
+        session starting from nih_loaders.py with the ave/trace schema
+        pinned. Erik told in-turn; now the only pending inbox item.
+    (3) SEVEN NON-SCHEMA ENTRIES FOUND AND MERGED. The pass first
+        (wrongly) declared the two 08-24 filings missing: a `^proposal_id:`
+        grep misses entries filed as bare `## <id>` headings, and SEVEN such
+        entries existed -- five from 2026-08-05 (skipped by two designer
+        passes) and the two from 08-24. Corrected in the same pass; a new
+        inbox Conventions bullet mandates sweeping both patterns and
+        reconciling SESSIONS.md "filed as proposal" claims before declaring
+        the inbox empty. Merged: 2026-08-24-0930 + 2026-08-05-1105 folded
+        into ONE learnings.md Process rule ("Scalar-reducing helpers name
+        their convergence filter; a verdict for question A is not a quality
+        label for question B" -- the naive always-filter-on-converged form
+        would have repeated the 08-05 ln-x mistake); 2026-08-24-1558 ->
+        learnings.md Process ("A fix applied on one side lands on both
+        sides", incl. the resume-after-failure cmp clause);
+        2026-08-05-1100 -> lessons.md L43 (guard-band the block averages);
+        2026-08-05-1110 -> preferences.md Plot defaults (widest interval
+        with no converged state); 2026-08-05-1115 -> style/lammps.md 1.15
+        (derived diagnostic columns must earn their place);
+        2026-08-05-1210 -> learnings.md Cluster discipline (health-check a
+        mount at the depth the work needs). mu_at_half CODE not changed --
+        that fix belongs to the next ni-h-phase-diagram scope holder.
+    (4) HOUSEKEEPING under the lock: lessons.md carried TWO lessons numbered
+        L41 (vacuum-gap, 08-20; hostname/placeholders, 08-24). The 08-24
+        hostname lesson is renumbered L42 with a renumbering note; its
+        citations in preferences.md and session-startup.md updated. Older
+        SESSIONS.md entries that say "gains L41" are left as historical
+        record.
+- in_flight: (none)
+- notes: |
+    designer lock NOT taken. Mount cluster-mounts/cmmg is HEALTHY this
+    session: listings and exact-path reads both work (d90 run-01 output
+    dir listed, .out staged and read). Session also debugged the Mac
+    sshfs mount infrastructure earlier in the conversation (outside
+    framework scope; symptom: mounts silently disappear during work).
+    STEP-1b RECONCILIATION done from run outputs on the mount, then
+    CLOSED by Erik's sacct paste (2026-08-25T~11:10Z,
+    `sacct -X -S 2026-08-24`):
+      22719302 NiH-HBIND-RELAX-D90-EAM      COMPLETED 01:16:47  0:0
+        -> the d90 thread-01 run-01 production; job ID now recorded.
+      22719558 NiH-BINDMAP-D0-EAM-PROBE     COMPLETED 00:09:55  0:0
+      22719559 NiH-BINDMAP-D30-EAM-PROBE    COMPLETED 00:09:01  0:0
+        -> Erik submitted the d0/d30 run-00 probes 2026-08-24 evening.
+        GATES NOT YET CHECKED (PROBE DONE / ALL PHASES COMPLETE /
+        site counts / L26 cost). NEXT ACTION for whoever takes threads
+        04/05: check gates, then hand over the two production sbatches.
+      22719499 nimelt-t01-prepare-probe     FAILED 00:00:18  1:0
+        -> OPEN LOOP, ni-melting-point-eam (scope of 2026-08-24-0753):
+        probe died in 18 s, undiagnosed. Flagged to Erik in-turn; not
+        this session's scope.
+    STALE active entries, re-flagged: 2026-08-05-1425-mcsites-
+    presentation, 2026-08-03-1401-nih-at-dislocs-design,
+    2026-08-02-1647-ingest-eam-dislocs-ni-cu, 2026-08-20-1145-cluster-
+    status-sweep.
+- closed: 2026-08-26T15:20Z
+- summary: |
+    Two-day session, three arcs, all closed. (1) PILOT: d90 thread-01 run-01
+    production (job 22719302) reconciled, harvested, analysed -- relaxed
+    trap SHALLOWER than rigid, mu_core = -2.4061 eV, thread-02 grid
+    confirmed, funneling + 12 non-assured radial sites documented;
+    thread.md + artefacts in 01_RELAXED-BINDING-SUBSET/. (2) DESIGNER
+    (lock taken and released same day): inbox merged incl. seven
+    non-schema entries two passes had missed; duplicate L41 -> L42.
+    (3) MOUNT INFRASTRUCTURE (with Erik hands-on): empty-listing bug
+    root-caused to sshfs exhausted-handle readdir (NOT macFUSE-5.3-only,
+    NOT fixed by downgrade or dir_cache=no); fixed by locally built
+    sshfs-pr379 (snapshot readdir) + auto_cache; two-master ssh config
+    (per-cluster sshfs ControlMaster, FQDN aliases); Time Machine
+    exclusion; all in dotfiles git. Erik confirms mount stable 2026-08-26.
+    OPEN FOR A DESIGNER: urgent inbox proposal 2026-08-25-2010 (supersede
+    the morning-state empty-listing mitigations in learnings) still
+    pending -- until merged, canon misleads sessions into remount/downgrade
+    advice. in_flight empty at close.
+- handoff_to: null
+
 
 ### session_id: 2026-08-06-1222-hydride-cycle-design
 - mode_at_close: pilot
