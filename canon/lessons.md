@@ -1259,3 +1259,129 @@ two weeks and four production runs later. See the "deviation is a reportable
 event" rule in learnings.md, Thread design.
 
 **Target:** `style/lammps.md` 1.13.
+
+## L42 — A cluster's project name is not a hostname; resolve placeholders, never guess them
+
+*(Renumbered L41 -> L42 on 2026-08-25 by session 2026-08-25-1105-sim-status:
+two lessons had been assigned L41 on 2026-08-20 and 2026-08-24. The
+vacuum-gap lesson above keeps L41 -- it is cited as L41 from learnings.md
+and older proposals; citations to THIS lesson in preferences.md and
+session-startup.md now read L42. SESSIONS.md entries written before the
+renumbering still say L41 and are left as historical record.)*
+
+**Rule:** every ssh / scp / rsync / sshfs target in a hand-off carries the
+REAL user and host, resolved from `canon/local/clusters.local.yaml`. The keys
+of `canon/clusters.yaml` (`cmmg`, `raven`, `viper`) are this project's NAMES
+for clusters, not hosts. `<CLUSTER_USER>` and `<CLUSTER_HOST>` in the public
+canon are POINTERS to the local overlay, not values, and must never appear in
+— or be guessed into — a command Erik is asked to paste.
+
+Corollary, and the other half of the same failure: **every command block states
+which machine it runs on, as the first thing in the block.** Crossing machines
+means a new numbered block with a new tag.
+
+**Where it bit:** 2026-08-24, session 2026-08-24-0753-status-readout handed over
+the ni-melting-point-eam thread 01 staging command as
+`rsync ... cmmg:/cmmc/ptmp/<CLUSTER_USER>/...`, and tagged none of the four blocks with
+a machine. `cmmg` resolves only through an alias in Erik's local ssh config; the
+target is `<CLUSTER_USER>@<CLUSTER_HOST>`. Erik corrected both.
+
+**Why the existing rules did not catch it.** They were both already written —
+preferences.md "Command hand-offs" has said *"State where the block runs (which
+machine/shell)"* since 2026-07-28, and L21 has required the explicit user since
+Thread 01. The gap was upstream of them: `canon/session-startup.md` step 0(b)
+asked only whether `canon/local/` EXISTS. A session could pass the environment
+gate having never opened `clusters.local.yaml`, then meet a `<CLUSTER_HOST>`
+placeholder in the public `clusters.yaml` with nothing on hand but memory. The
+rule about the output existed; the step that supplies the input did not.
+
+**Fixed by:** new startup step 0(b2) — resolve `ssh.user` / `ssh.host` /
+`scratch` and echo them in the startup brief, so the identity is in context
+BEFORE any hand-off is written; the two clauses added to preferences.md
+"Command hand-offs"; and `canon/templates/lint-handoff.sh`, which fails on an
+unresolved placeholder, a bare-host target, or a command block with no machine
+tag.
+
+**Generalizes to:** any identity-scrubbed field in the public canon. If a value
+in `canon/` looks like `<SOMETHING>`, it is a lookup instruction. Filling it
+from memory is the bug, even when the memory happens to be right.
+
+
+## L43 -- event detectors are lagging indicators; guard-band the block averages
+
+**Rule:** when a run-level failure (collapse, melt, dislocation escape, box
+instability) is detected at step S by a threshold crossing, invalidate every
+block-averaged row whose averaging window ENDS within one window-length of S,
+not merely rows at or after S. Derive the window length from the data (median
+step spacing of the averaged stream), never hardcode it. A detector's
+threshold marks when the event became *undeniable*, not when it began;
+anything averaged over a window touching that boundary is contaminated.
+
+**Where it bit:** 2026-08-05, ni-h-phase-diagram thread 03 run 06
+(mu = -2.02). `find_collapse_step` fires when a_eff falls 1 % below its
+running maximum; it fired at step 58060 -- one step past the run's last
+2000-step block average at 58000. Without the guard band the task passed
+every convergence test and would have published x = 0.9986 +- 0.0036 from a
+window that had already sagged from 1.00000 to 0.98846; with it, the window
+is dropped and the task is correctly flagged crashed.
+
+**Target:** analysis / harvest code that post-processes time series.
+(Merged 2026-08-25 from inbox 2026-08-05-1100.)
+
+## L44 -- `${}` never nests inside a `$(...)` formula; formula variables are `v_name`
+
+**Rule:** `${name}` (parse-time substitution) and `$(...)` (equal-style
+formula) are two mechanisms that must never nest. The parser does not
+substitute `${}` inside an extracted formula, and `$` is invalid formula
+syntax, so `$(ly/${L})` dies with `ERROR: Invalid syntax in variable
+formula (src/variable.cpp)`. Double quotes additionally SUPPRESS parse-time
+substitution (the variable doc names this mistake verbatim), so in a quoted
+`print` string the formula is evaluated late, by `print` itself, and hits
+the literal `${}` there. Inside any formula, reference variables only as
+`v_name`; an index-style `-var` variable works when its string is numeric:
+`$(ly/v_L)`.
+
+**Hard gate** (style/lammps.md 1.16, in lint-lammps-input.sh): grep
+`\$\([^)]*\$\{` on every input must return nothing.
+
+**Where it bit:** 2026-08-24, ni-melting-point-eam thread 01, probe job
+22719499: FAILED after 18 s -- a clean stage-1 NPT, then the first `print`
+died on `$(ly/${L})`. Five instances across the two inputs. The existing
+checks (1.1 runtime quantities need `$()`; 1.8 every `${VAR}` defined)
+both passed: neither constrains WHERE `${}` may appear. Cost ~23 h
+undiagnosed as an open loop plus one wasted submission.
+
+**Target:** every LAMMPS input; the style walk before every hand-over.
+(Merged 2026-08-25 from inbox 2026-08-25-1545.)
+
+## L45 -- deleting an ID does not delete its references; the error defers to the next init
+
+**Rule:** `uncompute` / `unfix` remove the compute or fix, not the places
+that still reference it. `thermo_style custom ... c_ID/f_ID` holds such a
+reference, and it is checked at SYSTEM INIT -- the next `run`, `minimize`,
+`write_data`, `write_restart`, or `rerun` -- not when the ID is deleted, so
+the input dies far from the line that broke it
+(`ERROR: Could not find thermo compute with ID ...`, src/thermo.cpp).
+Before any `uncompute`/`unfix`, retarget every consumer that references the
+ID: reset `thermo_style` to a line without it, and check still-active fixes
+(`ave/time` on `c_ID`), dumps, and variables the same way. The safe stage
+teardown order is: (1) unfix integrators/thermostats, (2) reset
+`thermo_style`, (3) uncompute.
+
+**Hard gate** (style/lammps.md 1.17, in lint-lammps-input.sh): after
+joining `&` continuations, an `uncompute`/`unfix` of an ID still referenced
+by the active `thermo_style`, followed by any init-triggering command
+before a `thermo_style` reset that drops the reference, fails the lint.
+Consumers other than thermo (fixes, dumps, variables) remain a manual walk.
+
+**Where it bit:** 2026-08-25, ni-melting-point-eam thread 01, prepare probe
+attempt 2: stages 1-2 ran clean, then `write_data` died on the stage-2
+`thermo_style ... c_TEMP_HOT` after `uncompute TEMP_HOT`. Second wasted
+submission on the same input; found by the probe, invisible to every
+line-local check because all three commands are individually correct --
+only their ORDER is wrong. Same failure shape as L44: a reference that was
+valid when written and invalid when evaluated. Line-local checks cannot see
+lifetimes; this gate simulates the one lifetime interaction (thermo) that
+is mechanically decidable.
+
+**Target:** every LAMMPS input with staged teardowns; the style walk.

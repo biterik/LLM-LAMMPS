@@ -1,0 +1,55 @@
+id:            mu-scan
+purpose:       load + summarize LAMMPS chemical-potential scan trees (fix mc/sites / fix gcmc) -- per-mu isotherms through the v3 verdict ladder, collapse detection with the L43 guard band
+owner:         internal                  # promoted 2026-08-25 from ni-h-phase-diagram's nih_loaders.py (proposal 2026-07-30-0934)
+upstream:      ~/DEVEL/MU-SCAN-LOADER   # own repo; push to GitHub pending (Erik)
+
+run_where:     mac                      # reads harvested .dat trees; nothing heavy. Works on the cluster too for in-place checks of un-harvested runs.
+
+exec:
+  mac:         "mu-scan {summarize|meta|acc|schema} <results_dir> --tps <cadence> [--n-metal N] [--seeded] [--csv out.csv]; or --run KEY --registry runs.json --root <project>"
+  cluster:     same invocation; needs python3 with numpy+pandas on PATH (module load anaconda or a PTMP venv -- NEVER install into $HOME)
+
+inputs:        |
+  A results/ tree of mu-*/ dirs (2- or 3-decimal mu, e.g. mu-2.27, mu-2.200)
+  or a results_seeded/ tree of mu<MU>_seed<SEED>/ dirs, each holding
+  ave.*.dat / trace.*.dat / acc.*.dat as written by the project's
+  fix ave/time + fix print blocks. --tps (MC attempts per MD step) is
+  REQUIRED with a bare dir -- it is the run's cadence and the only axis on
+  which mc/sites and gcmc are comparable. Optional runs.json registry
+  per project (see runs.json.example in the repo).
+
+  PINNED COLUMN CONTRACT (the 2026-08-20 review's blocking condition;
+  dispatch is on (kind, column count), never on the run name):
+    trace 5 : step col2 a x pe
+    trace 7 : + V_oct_ideal V_tet_ideal          (2026-07-30 wave)
+    trace 9 : + att acc_ins acc_del acc_ratio    (2026-08 run-14 wave)
+    ave   6 : step col2 a x pe pe_atom
+    ave   8 : + V_oct_ideal V_tet_ideal
+    acc   5 : step ins_att ins_acc del_att del_acc
+  col2 is c=N/M (mc/sites) or N_H (gcmc); x = H per metal atom is the
+  observable. An unknown count is a HARD ERROR by design: pin the new
+  schema in mu_scan.SCHEMAS AND in this card before loading.
+
+outputs:       |
+  stdout table or --csv: per-mu isotherm (x, a, N_H, window, drift, noise,
+  verdict, converged), per-mu meta (collapse_step, x_max_valid, crashed),
+  latest gcmc acceptance counters + f_GC[3..6] monotonicity check, or a
+  per-file schema report. Library API: import mu_scan (load_scan,
+  load_scan_seeded, load_acc, summarize, pool_seeds, merge_scans,
+  mu_at_half, mu_window, p_H2_from_mu, load_registry, isotherm).
+
+version:       0.1.0
+last_verified: 2026-08-25 against 0.1.0 via --version + 18-test suite (incl. real-data equivalence with nih_loaders.py on run 06 and the L43 guard-band case)
+
+gotchas:       |
+  - n_metal defaults to 10976 (14x14x14 fcc). Run 14's L6/L10 cells are
+    864/4000 -- pass --n-metal or a registry entry, or N_H and the poisson
+    noise floor are silently wrong. (Found at promotion, 2026-08-25.)
+  - There is deliberately NO default --tps: legacy gcmc runs 02/03 used
+    0.1/2.5 where every modern scan is 50 (EAM) or 20 (MEAM).
+  - The verdicts judge the SAMPLING WINDOW, not the physics: "equilibrated"
+    for question A is not a quality label for question B (learnings.md,
+    Process). Filter on `converged` only for the quantity it was scored on.
+  - nih_loaders.py in the ni-h-phase-diagram tree is the ANCESTOR, kept for
+    the notebooks' standalone runs; it cannot read the 9-col run-14 traces.
+    New analysis code imports mu_scan, not nih_loaders.

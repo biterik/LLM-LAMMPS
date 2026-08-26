@@ -116,9 +116,17 @@ def main():
     os.chdir(root)
     findings = []
 
+    # canon/local/ is the private overlay: real values BELONG there.
+    # .github/ carries Erik's own author byline and institutional address on
+    # workflows he publishes deliberately, and `deploy/rollout.sh` on M5
+    # REGENERATES those files -- scrubbing them by hand would be undone on the
+    # next rollout. This linter guards CLUSTER identity (user, host, scratch,
+    # Mac home), not authorship of a public repo. (Added 2026-08-26, after the
+    # repo-vitals workflow arrived from PR #1 carrying a byline email.)
+    SKIP_PREFIXES = ("canon/local/", ".github/")
     files = [
         f for f in tracked_files(root)
-        if not f.startswith("canon/local/")
+        if not f.startswith(SKIP_PREFIXES)
     ]
 
     # ---- (1) literal check ------------------------------------------------

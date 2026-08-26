@@ -73,6 +73,17 @@ for f in <input.in> <potential files...> <data files...>; do
 done
 
 LMP_BIN="${LMP_BIN:-lmp}"
+
+# Notification helper -- pre-flighted like any other input (see 6)
+export LMPS_NOTIFY_EMAIL="<NOTIFY_EMAIL>"
+NOTIFY_LIB="${LMPS_NOTIFY_LIB:-/cmmc/ptmp/<CLUSTER_USER>/BIN/slurm-notify.sh}"
+[[ -r "$NOTIFY_LIB" ]] || { echo "Missing notify helper: $NOTIFY_LIB" >&2; exit 1; }
+# shellcheck source=/dev/null
+source "$NOTIFY_LIB"
+lmps_notify_context PROJECT <project-id>
+lmps_notify_context THREAD  <thread-dir>
+lmps_notify_arm
+
 srun "$LMP_BIN" -in <input.in> -screen none
 ```
 
@@ -113,3 +124,61 @@ before sending.
 
 Cluster cleanup is a separate, explicit operation. Pilot proposes; Erik
 runs. Never embedded inside a chained `&&` sequence.
+
+## 6. Job notification e-mail -- Slurm's mail is a backstop, not the message
+
+**Slurm's `--mail-type` mail has a subject line and an EMPTY BODY, and the
+subject is boilerplate-first.** What arrives is
+
+```
+Slurm Job_id=22730593 Name=NiH-CYC2-RATEB-EAM Ended, Run time 03:41:12, COMPLETED, ExitCode 0
+```
+
+so a phone or a narrow mail list shows `Slurm Job_id=2273...` and nothing
+else: the job name is off the right edge, the status never appears, and the
+submission directory -- the only thing that makes the mail actionable -- is
+not in the message at all. Slurm offers no way to add a body. Therefore:
+
+**Every submit script sends its own notification.** Source
+`slurm-notify.sh` (canonical copy `canon/templates/slurm-notify.sh`,
+deployed per cluster at the `notify.helper` path in `canon/clusters.yaml`)
+and call `lmps_notify_arm` after the pre-flight checks, before the `srun`.
+It sends STARTED at arm time and exactly one of COMPLETED / FAILED
+(with the exit code) / TIMEOUT-OR-CANCELLED (on Slurm's SIGTERM) at the end.
+
+- **Subject**: `[LMPS] <STATUS> <job name> <job id>`. Status is
+  front-loaded so it survives truncation at any width; `[LMPS]` is there so
+  the mail is filterable.
+- **Body**: full job name, **absolute** `SLURM_SUBMIT_DIR` (L-absolute-paths
+  applies to mail exactly as it applies to hand-overs), working directory,
+  status + exit code, cluster/partition/ranks/node, start + end + wall,
+  the stdout and stderr paths, and the last 15 lines of each. Add whatever
+  else identifies the run with `lmps_notify_context KEY VALUE` -- at minimum
+  PROJECT and THREAD.
+- **The helper is pre-flighted, not defaulted away.** A missing helper
+  aborts the submit script before the run, in the same existence-check loop
+  as the `.in` and the potential. Never `source ... || true`: a
+  notification that silently stops arriving is the exact failure class
+  (`learnings.md`, "a stale write-listing looks like a successful no-op").
+- **Slurm's own mail stays armed as a backstop**, `--mail-type=FAIL,TIME_LIMIT`
+  only. BEGIN and END are off -- the helper covers those with a real body.
+  FAIL and TIME_LIMIT stay because they are the cases where the helper cannot
+  run: node failure, OOM-kill, SIGKILL. A doubled FAIL mail is intended.
+- **If no MTA answers on the compute node**, the helper writes the message
+  to `NOTIFY-<jobid>.txt` in the submission directory and prints a
+  `NOTIFY FALLBACK:` line to stdout. That is a degraded state to fix, not a
+  normal one; the per-cluster `notify.mta_on_compute_nodes` field in
+  `clusters.yaml` records whether it has been verified. **Verify it once
+  per cluster with `canon/templates/slurm-notify.probe.slurm`** -- one
+  core-minute, and it is not optional: "the job exited 0" says nothing
+  about whether a mail left the node.
+- **Probe a mailer BOTH ways -- on PATH and at its absolute path.** On cmmg
+  compute nodes (verified 2026-08-26, job 22731708) `command -v sendmail`
+  finds nothing while `/usr/sbin/sendmail` is executable. Testing only the
+  first silently degrades to `mail` and loses the MIME header; testing only
+  the second breaks on a cluster that ships sendmail on PATH. `slurm-notify.sh`
+  tests `command -v` first, then `-x /usr/sbin/sendmail`.
+- **Slurm's cluster name need not be ours.** The body prints
+  `SLURM_CLUSTER_NAME`, which on cmmg is `cmmc`; a mail therefore reads
+  `cmmc / s.cmmg`. Expected, not a bug -- but the same class as L42: our
+  key for a machine is not the machine's name for itself.

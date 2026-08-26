@@ -5,7 +5,7 @@
 # Exit:    0 if all checks pass; non-zero with diagnostics on first failure.
 #
 # Mechanizes ARCHITECTURE.md §12 Layer 1 checklist as encoded in
-# <REPO_ROOT>/canon/style/lammps.md §1.1–1.5, 1.8.
+# <REPO_ROOT>/canon/style/lammps.md §1.1–1.5, 1.8, 1.16, 1.17-thermo (hard gates).
 #
 # Does NOT cover (still manual review required):
 #   §1.4 MEAM library element index alignment with parameter file
@@ -46,6 +46,39 @@ if grep -nE '\$\{(lx|ly|lz|press|p[xyz]{2}|fnorm|fmax|etotal|step|temp|pe|ke|vol
   fail "L1 — Runtime quantity referenced with \${...} (parse-time). Use \$(...) instead. See lines above."
 fi
 pass "L1 — no parse-time \${} on runtime quantities"
+
+# §1.16 — ${} nested inside $(...) formulas (L44)
+#   The parser never substitutes ${} inside an extracted $() formula; a '$'
+#   is invalid equal-style syntax. Reference variables as v_name in formulas.
+if grep -nE '\$\([^)]*\$\{' "$INPUT"; then
+  fail "L44 — \${} substitution nested inside a \$(...) formula. Use v_name inside formulas (e.g. \$(ly/v_L)). See lines above."
+fi
+pass "L44 — no \${} nested inside \$(...) formulas"
+
+# §1.17 — deleted ID still referenced by active thermo_style at an init (L45)
+#   Join '&' continuations, then track: last thermo_style line; on
+#   uncompute/unfix of an ID that line references, arm it; a later
+#   thermo_style that drops the reference disarms; any init command
+#   (run/minimize/write_data/write_restart/rerun) with an armed ID fails.
+L45_OUT="$(awk '
+  function refed(id) { return thermo ~ ("[cf]_" id "([^A-Za-z0-9_]|$)") }
+  { line = $0
+    while (line ~ /&[[:space:]]*$/) { sub(/&[[:space:]]*$/, " ", line); if ((getline nxt) > 0) line = line nxt; else break }
+    $0 = line }
+  /^[[:space:]]*thermo_style[[:space:]]/ {
+    thermo = $0
+    for (id in armed) if (!refed(id)) delete armed[id]
+    next }
+  /^[[:space:]]*(uncompute|unfix)[[:space:]]/ {
+    if (thermo != "" && refed($2)) armed[$2] = NR
+    next }
+  /^[[:space:]]*(run|minimize|write_data|write_restart|rerun)([[:space:]]|$)/ {
+    for (id in armed) { printf "line %d: init while thermo_style still references deleted ID %s (deleted near line %d)\n", NR, id, armed[id]; bad = 1 } }
+  END { exit bad }' "$INPUT")" || {
+  echo "$L45_OUT"
+  fail "L45 — thermo_style references an uncomputed/unfixed ID at a system init. Reset thermo_style BEFORE the uncompute/unfix. See lines above."
+}
+pass "L45 — no deleted IDs dangling in thermo_style at an init"
 
 # §1.2 — Generic filenames (L3, L20)
 #   Match generic names only when standalone — preceded by start-of-line,

@@ -33,6 +33,7 @@ so `exec.mac` and `exec.cluster` are the same bare invocation.
 | lego-tools | suite: cut/shift/analyze/change-box/pbc-wrap/make-box/nearest-atoms/remove-per-atom | large-data->cluster | external (github.com/__GH__/LEGO-TOOLS) | 2026-04-19 |
 | afc | atomic format converter (XYZ ↔ LAMMPS ↔ CEL) | large-data->cluster | external (github.com/__GH__/LEGO-TOOLS) | 2026-04-19 |
 | lammps-compile-n-bench | LAMMPS build recipes + portable PACE/ACE benchmark for cmmg/cmti/raven/viper | cluster | external (github.com/__GH__/LAMMPS-compile-n-bench) | 2026-07-28 |
+| mu-scan | mu-scan tree loader + per-mu isotherm/verdict summariser (mc/sites + gcmc) | mac | internal (~/DEVEL/MU-SCAN-LOADER) | 2026-08-25 |
 
 Notes:
 - `lammps-compile-n-bench` is a **reference card**, not an invocable CLI: it

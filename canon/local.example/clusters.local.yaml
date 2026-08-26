@@ -5,6 +5,8 @@
 updated: 2026-01-01
 
 notify_email: <NOTIFY_EMAIL>      # your Slurm --mail-user
+notify_helper: /<CMMG_SCRATCH>/BIN/slurm-notify.sh   # deployed copy of
+                 # canon/templates/slurm-notify.sh (added 2026-08-26)
 
 clusters:
   cmmg:

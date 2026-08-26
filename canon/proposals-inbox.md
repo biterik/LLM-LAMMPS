@@ -52,6 +52,13 @@ section's conventions (numbered list, heading style, etc.).]
 
 ## Conventions
 
+- **Use the schema above verbatim.** Entries filed as bare `## <id> — title`
+  headings without the `proposal_id:` frontmatter are invisible to a
+  frontmatter grep and have been skipped by designer passes for weeks
+  (five 2026-08-05 entries and two 2026-08-24 entries, found 2026-08-25).
+  A designer pass therefore sweeps BOTH `^proposal_id:` and `^## 20` and
+  reconciles every "filed as proposal" claim in SESSIONS.md against this
+  file before declaring the inbox empty.
 - **Routine** proposals can wait for the next designer session.
 - **Urgent** proposals (priority: urgent) — rare; for cases like a
   pre-flight rule a pilot encountered but couldn't add without
@@ -732,7 +739,7 @@ proposed_at: 2026-07-30T09:34Z
 target_file: canon/tools/ (new tool card) + canon/tools/examples-catalog.md
 target_section: new tool card, per the "3+ uses -> promote" rule in learnings.md "Tools"
 priority: routine
-status: pending
+status: merged                          # 2026-08-25: tool BUILT + card landed (session 2026-08-25-1536)
 ---
 
 ## Proposed rule
@@ -788,6 +795,30 @@ window and one task published a contaminated mean as clean) -- that is the
 strongest single argument for having one implementation instead of three.
 Recommend opening it as its own designer+dev session with `nih_loaders.py` as
 the starting point rather than a green-field build.
+
+Third review 2026-08-25 by session 2026-08-25-1105-sim-status: CONFIRMED,
+still pending, unchanged reasoning -- the tool still does not exist and canon
+holds cards, not code. Both blocking details from the second review stand
+(pin the ave/trace column schema; fold in the collapse guard-band fix).
+Flagged to Erik in-turn as needing its own dev session; this is now the only
+pending item in the inbox.
+
+Fourth review AND MERGE 2026-08-25 by session 2026-08-25-1536-nimelt-probe-fix,
+designer+pilot at Erik's explicit "implement everything in your inbox": the
+blocker was never approval but that no session had taken the dev scope, so
+this session took it. TOOL BUILT: ~/DEVEL/MU-SCAN-LOADER (mu_scan.py library
++ mu-scan CLI + 18-test suite, git-initialised; GitHub push handed to Erik).
+Both blocking details from the second review resolved: (1) the ave/trace
+column contract is PINNED as a (kind, ncol) schema registry -- and pinning it
+immediately paid off: run 14's traces carry a NINE-column schema (att/acc
+counters appended) that nih_loaders.py cannot read at all, found only
+because the tool refuses unknown counts; (2) the L43 collapse guard band is
+in, verified against the real run-06 mu=-2.02 files. Equivalence-tested
+against nih_loaders.py on real run-06 data (identical isotherm). Card:
+canon/tools/mu-scan.card.yaml (records the pinned contract + the n_metal
+and no-default-tps gotchas); catalog row added. Deploy to ~/bin (Mac +
+cluster) handed to Erik -- card is live, exec verified on the Mac-side VM
+(--version) and the full suite in the build environment.
 
 ---
 proposal_id: 2026-07-30-1015-merge-scans-one-series-per-condition
@@ -1804,6 +1835,10 @@ canon write in this batch by `stat` size/mtime rather than by re-staging.
 
 ## 2026-08-05-1100 — collapse detectors lag; block averages need a guard band
 
+**Status: merged** — 2026-08-25 designer pass (session 2026-08-25-1105-sim-status):
+merged as lessons.md **L43** ("event detectors are lagging indicators;
+guard-band the block averages"), wording essentially as proposed.
+
 **From** session 2026-08-05-1009-nih-harvest (pilot, ni-h-phase-diagram-eam-meam).
 **Class** analysis / convergence machinery.
 
@@ -1832,6 +1867,13 @@ that boundary is suspect.
 
 ## 2026-08-05-1105 — a convergence verdict is not a data-quality filter
 
+**Status: merged** — 2026-08-25 designer pass: folded together with inbox
+2026-08-24-0930 into ONE learnings.md "Process" rule ("Scalar-reducing
+helpers name their convergence filter; a verdict for question A is not a
+quality label for question B") — the two proposals are two halves of the
+same rule (0930: unconverged points corrupt scalar reducers; 1105: a generic
+`converged` filter corrupts fits it was not built for). Both instances kept.
+
 **From** session 2026-08-05-1009-nih-harvest (pilot, ni-h-phase-diagram-eam-meam).
 **Class** analysis discipline.
 
@@ -1859,6 +1901,10 @@ present the disagreement as corroboration.
 
 ## 2026-08-05-1110 — report the interval with NO converged point in it, not the count of points inside
 
+**Status: merged** — 2026-08-25 designer pass: merged into preferences.md
+"Plot defaults" as an extension of the sampling-density corollary, wording
+essentially as proposed.
+
 **From** session 2026-08-05-1009-nih-harvest (pilot, ni-h-phase-diagram-eam-meam).
 **Class** preferences.md, plot defaults — extends the existing "report the sampling
 density of any feature you compare" rule.
@@ -1885,6 +1931,10 @@ supplied the first Tc bracket the project has had.
 
 ## 2026-08-05-1115 — check a derived diagnostic column against the columns you already have
 
+**Status: merged** — 2026-08-25 designer pass: merged as style/lammps.md
+**1.15** ("Derived diagnostic columns must earn their place"), with the
+2026-08-04 `metric volume` cross-reference as proposed.
+
 **From** session 2026-08-05-1009-nih-harvest (pilot, ni-h-phase-diagram-eam-meam).
 **Class** style/lammps.md, output design.
 
@@ -1909,6 +1959,10 @@ canon lesson about interstice/volume diagnostics.
 ---
 
 ## 2026-08-05-1210 — L15 extension: a mount can list at the root and HANG deeper
+
+**Status: merged** — 2026-08-25 designer pass: merged into learnings.md
+"Cluster discipline" as "Health-check a mount at the depth the work needs",
+all four proposed rules kept.
 
 **From** session 2026-08-05-1009-nih-harvest (pilot, ni-h-phase-diagram-eam-meam).
 **Class** learnings.md, "Cluster discipline" / L15 (sshfs flakiness).
@@ -2708,3 +2762,457 @@ bite silently: it produces a plausible-looking number in the wrong units rather
 than an error, which is the same fail-late shape as L38. The L12 cross-reference
 (quickmin/FIRE cannot take `fix box/relax`) resolves the obvious way here, since a
 stress map wants the box held anyway.
+
+---
+
+## 2026-08-24-0930 — a bracket-interpolation helper must filter on `converged`
+
+**Status: merged** — 2026-08-25 designer pass: merged into learnings.md
+"Process" jointly with 2026-08-05-1105 (see that entry's note); the
+allow_unconverged escape hatch and the "diagnostic/plot helpers stay
+unrestricted" clause both kept. NOTE: the same designer pass initially
+declared this proposal missing — the pilot's status line "- status: pending"
+below (non-schema format) is invisible to a `^proposal_id:` grep; see the
+new Conventions bullet. mu_at_half itself is NOT changed here: the code fix
+belongs to whoever next holds the ni-h-phase-diagram scope.
+
+- filed_by: session 2026-08-24-0753-status-readout (pilot)
+- status: merged   # 2026-08-25 designer pass
+- class: analysis discipline / verdict-ladder enforcement
+- found_in: ni-h-phase-diagram-eam-meam, thread 03 run 14 analysis
+
+**The instance.** `nih_loaders.mu_at_half(iso)` picks the highest-mu point with
+x < 0.5 and the lowest-mu point with x >= 0.5 and interpolates linearly. It does
+not look at the `converged` column that the same module computes. At EAM 300 K
+the low bracket point is run 09's mu = -2.275, which the verdict ladder flags
+`filling` (x = 0.19 +- 0.34, drift 0.79 across the averaging window). The
+project's headline mu(x=0.5) = -2.2731 +- 0.0025 eV is therefore interpolated
+through a point that is a snapshot of an unfinished transition, and the
+interpolation weight is dominated by it. Converged-only bracketing gives
+-2.2750 +- 0.0050 eV. Impact here is 1.9 meV; the point is not the size of the
+error.
+
+**The class, which is what should be fixed.** This project BUILT a verdict
+ladder precisely so that unconverged points could be identified, drew them as
+open markers so they are visible in every figure, and then withdrew a headline
+claim on 2026-08-05 because "the sigma_x peak tracks whichever point is mid-fill
+at the end of the run". Three months later a different helper made the same
+mistake in a different function, because the ladder is advisory: it labels
+points, and each caller decides whether to care. A label that every caller must
+remember to honour will eventually not be honoured.
+
+**Proposed rule.** Any helper that REDUCES an isotherm to a scalar — an
+interpolated crossing, a fitted slope, a plateau value, a coexistence mu — must
+either (a) restrict to converged points, or (b) take an explicit
+`allow_unconverged=True` and put the fact in the returned object so it reaches
+the figure caption and the .dat header. Diagnostic and plotting helpers stay
+unrestricted: the open markers are the whole point of drawing them.
+
+Belongs in canon/style/ as an analysis-code rule, with a lesson entry pointing
+at this instance and at the 2026-08-05 sigma_x withdrawal as the same class.
+The one-line change to `mu_at_half` is NOT the fix; the fix is the rule.
+
+## 2026-08-24-1558-a-cluster-side-fix-does-not-reach-the-backed-up-copy
+
+**Status: merged** — 2026-08-25 designer pass: merged into learnings.md
+"Process" as "A fix applied on one side lands on both sides, in the same
+turn", including the proposed resume-after-FAILURE `cmp` clause. The
+`cmp`-based checker tool is NOT built (rule first, per the proposal).
+
+**Filed by:** session 2026-08-24-1531-nih-at-dislocs-status (pilot).
+**Status:** merged (2026-08-25 designer pass).
+
+**The instance.** `ni-h-at-dislocs-eam-meam` thread 01 run 01. Job 21638800
+FAILED on 2026-08-05 on `group HGRP clear` at the top of a `jump SELF` loop.
+Erik applied the fix ON THE CLUSTER and re-ran the probe successfully as
+22344727 on 08-20. On 2026-08-24 the MAC-side copy of
+`relax-Hbind_Ni-disloc-d90-Pezold-EAM-0K.in` was found still carrying the
+broken line. For nineteen days the only BACKED-UP version of that input was
+the one that cannot run.
+
+**The class.** ARCHITECTURE's survivability rule says the project's definition
+tier (scripts, notes, decisions) lives on the backed-up Mac and the cluster is
+a compute layer the project temporarily uses. But an edit made on the cluster
+-- which is the natural place to fix a job that just died -- flows the WRONG
+WAY across that boundary, and nothing checks. The failure is silent: both
+copies exist, both are plausible, and the stale one is the one that survives a
+cluster wipe. It would have been found the hard way when someone re-staged the
+Mac copy over the working cluster copy and re-ran 21638800's failure.
+
+Note the asymmetry that makes this worth a rule rather than a reminder: a
+missing file is noticed immediately; a file that exists in two versions and
+differs by one line is noticed only when it runs.
+
+**Proposed rule (wording for the designer to sharpen).** When a run directory's
+input, submit script or helper is edited on the cluster, the same session
+mirrors it back to the Mac before the thread's entry is updated -- and a
+session resuming a thread whose last event was a FAILURE `cmp`s the Mac and
+cluster copies of that run's inputs before proposing anything. The second half
+is the cheap one and catches the case where the fixing session never came back.
+
+**Possible mechanism, if a tool is wanted:** a `cmp`-based check over a run
+dir's `*.in` / `*.slurm` / `*.py` on both sides, reporting only differences.
+Not written -- proposing the rule first.
+
+**Where the instance is written up:** SESSIONS.md, session
+2026-08-24-1531-nih-at-dislocs-status, `production_setup` (a).
+
+---
+proposal_id: 2026-08-25-1200-mount-background-traversers
+session_id: 2026-08-25-1105-sim-status
+proposed_at: 2026-08-25T12:00Z
+target_file: canon/learnings.md
+target_section: "Cluster discipline" (extends the two-mount-failures / L15 entry)
+priority: routine
+status: merged                          # 2026-08-25 designer pass
+---
+
+## Proposed rule
+
+Keep background traversers off the sshfs mounts: exclude
+`~/cluster-mounts` from Time Machine (`sudo tmutil addexclusion -p`) and
+from any antivirus scanner, and treat the Cowork desktop VM as a
+persistent holder of open handles on every connected mount subtree --
+disconnect the folder from the session (or end the session) BEFORE
+unmounting. An "empty" mount whose sshfs process and ssh master are
+still alive is the L15 stale view, not an unmount and not data loss.
+
+## Where it bit
+
+2026-08-25 ~12:59-13:14 CEST, M5. Erik saw the cmmg mount "disappear"
+while a pilot session was harvesting run 01 of ni-h-at-dislocs-eam-meam
+over the device bridge. A capture script run at 13:14:25 shows the mount
+was NOT down: the macfuse mount-table entry, the sshfs process (up since
+12:01:48), and the ControlMaster were all alive, and a real remote
+command ran in 5.9 s. Concurrent load, all in the same window: (a) pid
+3762 (`com.apple...`, 9-char-truncated; consistent with
+com.apple.Virtualization.VirtualMachine = the Cowork workspace VM) held
+~70 open handles across the FUSE volume -- the mount root, every
+top-level directory the session had listed, and the exact eight files it
+had staged minutes earlier; (b) Time Machine began a backup to TM062026
+at 12:59 and failed opening `/Users/<MAC_USER>/cluster-mounts/cmmg`
+(logged 12:59:03); (c) the wsavd scanner walked the TM copy of
+cluster-mounts at 13:02. Open handles from (a) also explain the
+historical umount "Resource busy" -> force-unmount -> stale-sshfs ->
+error 35 chain.
+
+## Suggested wording
+
+- **Background traversers on the mount (extends "Two mount failures").**
+  Time Machine and AV scanners walk `~/cluster-mounts` unless excluded;
+  exclude the tree once per machine (`sudo tmutil addexclusion -p
+  ~/cluster-mounts`, plus the scanner's own exclusion list). The Cowork
+  desktop VM keeps open handles on every file and directory a session
+  has listed or staged under a connected mount subtree for the life of
+  the session; those handles pin the volume, so disconnect the folder or
+  end the session before unmounting, and read a failed `umount`
+  ("Resource busy") as "a session still holds it", not as a broken
+  mount. Diagnostic: mount-table entry + live sshfs process + live
+  master but empty listings = L15 stale view; verify with an exact-path
+  `stat` before concluding anything is gone.
+
+## Designer review notes
+
+Merged 2026-08-25T~12:45Z by session 2026-08-25-1105-sim-status
+(designer+pilot, lock held for this pass; Erik's explicit request).
+Landed in learnings.md "Cluster discipline" as "Background traversers on
+the mount", directly after the two-mount-failures entry. Wording updated
+beyond the draft with evidence gathered after filing: pid confirmed as
+com.apple.Virtualization.VirtualMachine; the ls-empty / exact-path-stat-
+succeeds discriminant (verified live on M5); the System Settings GUI route
+for the Time Machine exclusion; "quit the app" as the practical handle
+release, since the folder-removal UI does not exist yet.
+
+
+---
+proposal_id: 2026-08-25-1410-macfuse53-readdir-root-cause
+session_id: 2026-08-25-1105-sim-status
+proposed_at: 2026-08-25T14:10Z
+target_file: canon/learnings.md
+target_section: "Cluster discipline" (amends the two 2026-08-25 mount entries merged earlier today)
+priority: routine
+status: merged                          # 2026-08-25 designer pass (2026-08-25-1536)
+---
+
+## Proposed rule
+
+The "empty listings while exact-path stat works" mount state (L15 and the
+2026-08-25 entries) has an identified upstream root cause: macFUSE 5.3.x
+re-issues readdir with a non-zero offset on an SFTP directory handle sshfs
+has already exhausted; sshfs answers empty and caches it (upstream fix
+libfuse/sshfs PR #379, open as of 2026-08-25). Separately, macFUSE >= 5.3 no
+longer daemonizes sshfs -- a mount command that seems to hang has usually
+SUCCEEDED, with sshfs sitting in that terminal's foreground, where a stray
+ctrl-C/ctrl-Z or a closed tab kills or freezes the mount. Mitigations, in
+order: `-o dir_cache=no` (stops caching the poisoned listing); downgrade
+macFUSE to 5.2.0; run sshfs with `-f`, backgrounded and disowned, and poll
+the mount table for success. Re-test and drop the workarounds when a fixed
+sshfs release lands.
+
+## Where it bit
+
+All of the 2026-08 M5 mount incidents. Diagnosed 2026-08-25 from two
+capture-script runs: 13:14 (mount + sshfs + master alive, ls empty, stat
+fine, ~70 Cowork-VM handles) and 13:49 (recurrence 7 min after a fresh
+remount with Time Machine already excluded -- ruling out the traversers as
+root cause; they only multiply the re-issued readdirs). Both captures show
+sshfs with the SHELL as parent in state S+, i.e. not daemonized, which
+retroactively explains the original "mount command hangs" report that opened
+the investigation.
+
+## Suggested wording
+
+Designer's choice: either amend the two existing 2026-08-25 bullets in
+place (append the root cause + the daemonization note) or add one compact
+"root cause" bullet cross-referencing them. Cite libfuse/sshfs PR #379 and
+the macFUSE 5.3.3 release notes.
+
+## Designer review notes
+
+Merged 2026-08-25 by session 2026-08-25-1536-nimelt-probe-fix: added as its
+own "Root cause of the empty-listing states" bullet in learnings.md
+"Cluster discipline", cross-referencing the two existing 2026-08-25 bullets
+rather than amending them in place (each records a distinct diagnostic).
+Kept: PR #379 citation, the daemonization note with the S+ evidence, the
+traversers-as-amplifier finding, and the mitigation order.
+
+---
+proposal_id: 2026-08-25-1545-no-dollar-substitution-inside-formulas
+session_id: 2026-08-25-1536-nimelt-probe-fix
+proposed_at: 2026-08-25T15:45Z
+target_file: canon/style/lammps.md
+target_section: new numbered rule near 1.x (variables), plus one grep in the pre-handover style walk
+priority: routine
+status: merged                          # 2026-08-25 designer pass (same session, after promotion)
+---
+
+## Proposed rule
+
+Never place a `${name}` substitution inside a `$(...)` immediate formula,
+and never rely on `${name}` substitution inside a double-quoted string.
+Inside any equal-style formula (immediate `$(...)` or `variable ... equal`),
+reference variables ONLY as `v_name` (an index-style variable from `-var`
+works if its string is numeric). The LAMMPS variable doc names the quoted
+case verbatim: "it is a mistake to enclose a variable formula in double
+quotes if it contains variables preceded by $ signs ... the quotes prevent
+variable substitution."
+
+MECHANICAL CHECK, to join the existing style walk (us-ascii, L1, L3,
+every-${VAR}-passed): both greps must return nothing on every .in before
+hand-over:
+
+    grep -nE '\$\([^)]*\$\{' *.in          # ${} nested inside $(...)
+    grep -nE '"[^"]*\$\{[^"]*\$\([^)]*\)'  *.in   # quoted strings mixing ${} and $()  -- inspect hits
+
+The first is decidable and should be a hard gate; the second flags quoted
+print strings where parse-time substitution is suppressed and everything
+must survive print's own late evaluation.
+
+## Where it bit
+
+Job 22719499 (nimelt-t01-prepare-probe, 2026-08-24, ni-melting-point-eam
+thread 01): probe FAILED after 18 s at the first `print` after stage-1 NPT,
+"ERROR: Invalid syntax in variable formula (src/variable.cpp:2619)", from
+`$(ly/${L})` inside a quoted print string. Five instances existed across
+the two thread-01 inputs (prepare lines 61, 94; measure lines 58, 61 twice).
+The 08-24 style walk verified every ${VAR} was DEFINED (passed by every
+submit script) but had no check on WHERE a ${} may appear -- the definition
+check passes while the syntax class fails. Sat undiagnosed ~23 h as the
+open loop flagged by 2026-08-25-1105-sim-status. Fixed 2026-08-25 by
+replacing with `v_L` (doc-verified against docs.lammps.org/variable.html);
+the probe otherwise ran clean.
+
+## Suggested wording
+
+Designer's choice; suggest folding into style/lammps.md next to the
+existing runtime-quantities rule ("these need $(...) not ${...}"), which
+states when to use each mechanism but not that they must never nest. The
+probe did its job -- this rule is about catching the class before it costs
+a submission and a day of latency.
+
+## Designer review notes
+
+Merged 2026-08-25 by session 2026-08-25-1536-nimelt-probe-fix (the
+proposing session, promoted to designer+pilot by Erik before the merge):
+style/lammps.md 1.16 with both greps, lessons.md L44, and the hard-gate
+grep added to templates/lint-lammps-input.sh (verified: fires on a
+reconstruction of the 22719499 bug, passes the fixed inputs). The same
+designer window also added L45 / style 1.17 / a second lint gate for the
+dangling-thermo-reference class found by probe attempt 2 -- filed directly
+under the held lock, no inbox round-trip.
+
+---
+proposal_id: 2026-08-25-1740-barostat-dilate-defaults-to-all
+session_id: 2026-08-25-1536-nimelt-probe-fix
+proposed_at: 2026-08-25T17:40Z
+target_file: canon/style/lammps.md
+target_section: new numbered rule (barostats + frozen groups), near 1.13 boundary-conditions
+priority: routine
+status: pending
+---
+
+## Proposed rule
+
+A barostat's box remap applies to ALL atoms by default (`dilate all` in
+fix nph/npt and friends). Any group meant to stay "held fixed" in a
+barostatted run is silently strained with the box unless the remap is
+restricted (`dilate <group>` on the mobile group, fix defined on that
+group). Corollary for probes: a "held fixed" claim is verified
+QUANTITATIVELY from the probe snapshot -- layer spacing against a0/2 (or
+displacement against the reference), never by eyeballing a picture or an
+fcc percentage alone.
+
+## Where it bit
+
+2026-08-25, ni-melting-point-eam thread 01, prepare probe attempt 2: all
+mechanical gates passed (ALL PHASES COMPLETE, clean .err, hot half molten)
+but the frozen cold half came out at 8% uniaxial strain -- x layer spacing
+1.94 A vs a0/2 = 1.794 A, ratio exactly the box expansion. velocity-zero +
+setforce-zero looked like "fixed" but the nph remap moved the atoms
+affinely anyway. thread.md had flagged this exact risk as OPEN; the
+layer-spacing histogram settled it. Fixed with
+`fix MELT HOT nph x ... dilate HOT` (doc-checked: the dilate <group>
+example in fix_nh.html is precisely a solid substrate under a barostatted
+fluid).
+
+## Suggested wording
+
+Designer's choice. The rule has two halves -- the LAMMPS semantics (dilate
+defaults to all) and the probe discipline (quantify "fixed") -- and they
+may land in different files (style/lammps.md vs learnings.md "Workflow
+rules"). Not mechanically lintable: needs the design intent.
+
+## Designer review notes
+
+[pending]
+
+---
+proposal_id: 2026-08-25-2010-empty-listing-mitigations-superseded
+session_id: 2026-08-25-1105-sim-status
+proposed_at: 2026-08-25T20:10Z
+target_file: canon/learnings.md
+target_section: "Cluster discipline" — amends the just-merged "Root cause of the empty-listing states" bullet
+priority: urgent
+status: merged                          # 2026-08-26 by session 2026-08-26-1305
+---
+
+## Proposed rule
+
+Replace the mitigation list in the "Root cause of the empty-listing states"
+bullet (merged 2026-08-25 by 1536-nimelt-probe-fix from proposal
+2026-08-25-1410) with the evening's measured state: the bug is NOT
+5.3-specific and downgrading macFUSE does NOT fix it; the working fix is
+sshfs built from the PR #379 snapshot-readdir branch.
+
+## Where it bit
+
+Same day, hours apart. After the morning proposal was written: the
+empty-listing state reproduced TWICE on macFUSE 5.2.0 (4-7 min after fresh
+mounts), and `-o dir_cache=no` did not help (`ls -la` exits 0 with correct
+`.` metadata and zero entries -- the empty answer is generated fresh, not
+cached by sshfs). A parallel session then read the merged morning-state
+bullet and prescribed "remount, downgrade to 5.2.0 if it keeps biting" --
+both already done and already shown insufficient. Stale canon actively
+misled a live session within hours of merging.
+
+## Suggested wording
+
+Amend the bullet to state: (1) reproduced on macFUSE 5.2.0; version
+downgrades are not a fix (the 5.2 downgrade only restored sshfs
+daemonization). (2) Working fix, deployed on M5 2026-08-25: sshfs built
+from libfuse/sshfs PR #379 (snapshot readdir) via
+`DEVEL/build-sshfs-pr379.sh`, installed as /opt/homebrew/bin/sshfs-pr379;
+`dotfiles/shell/cluster-mounts.zsh` prefers it and falls back to stock
+sshfs on machines without it. Watch upstream: return to stock when a
+release contains the fix. (3) Second flavor, stale FILE CONTENT (changed
+files serving old pages): fixed by `-o auto_cache` in the mount options
+(invalidate on mtime change; attr_timeout=2 bounds the staleness).
+(4) Diagnostic: mount-table output shows only kernel flags and can never
+confirm mount options like auto_cache -- read `pgrep -fl sshfs`.
+
+## Designer review notes
+
+MERGED 2026-08-26 (session 2026-08-26-1305-notify-email-body), in full and
+as an AMENDMENT rather than a rewrite: the original bullet's diagnosis
+(macFUSE re-reads an exhausted SFTP dir handle) survives, its mitigation
+list is replaced by the measured evening state. All four points landed --
+not 5.3-specific, downgrade is not a fix, dir_cache=no is a softener not a
+cure, PR #379 build is the fix -- plus the auto_cache content flavor and
+the `pgrep -fl sshfs` diagnostic. Corroborated at merge time by Erik:
+mounts have run without problems since the PR #379 build was deployed on
+M5, which is the confirming evidence the proposal could not yet have. The
+"stale canon misled a live session" story is kept in the bullet's
+provenance line, because that is the reusable half.
+
+## 2026-08-25-2015-wall-fixes-need-nonperiodic-dims
+
+- filed_by: 2026-08-25-1725-nih-two-project-status (pilot)
+- status: pending
+- target: canon/style/lammps.md 1.13 (+ lint-lammps-input.sh gate)
+- observation: |
+    fix wall/reflect (and the fix wall/* family) REFUSES to act in a
+    periodic dimension: "ERROR: Cannot use fix wall/reflect in periodic
+    dimension z (src/fix_wall_reflect.cpp:110)". Killed both tasks of
+    probe 22728943 (ni-h-hydride-cycle-eam thread 03) and both of the
+    thread-04 probe on 2026-08-25: the input added a reflecting wall at
+    134 a0 to fix the L41 vacuum-gap re-entry while keeping
+    `boundary p p p`. The command was doc-checked for SYNTAX but not
+    for this precondition -- exactly the class style 1.9 warns about.
+    Fix applied: boundary p p f, which is also the honest geometry
+    (the slab's faces become genuinely disconnected).
+- proposed_rule: |
+    style/lammps.md 1.13 addition: "A wall is not a patch on a
+    periodic axis -- it REQUIRES the axis non-periodic. If a fix
+    wall/* acts in dimension D, the boundary in D must be f (or s/m).
+    Conversely, when adding a wall to close the L41 vacuum-gap hole,
+    change the boundary in the same edit; p-plus-wall is rejected by
+    LAMMPS at init."
+- lint_gate: |
+    Mechanizable: parse the `boundary` line; for every `fix .* wall/`
+    line, extract the face keywords (xlo/xhi/ylo/yhi/zlo/zhi); fail if
+    the corresponding boundary char is p.
+
+---
+proposal_id: 2026-08-25-2130-desired-sign-is-not-a-passed-gate
+session_id: 2026-08-25-1536-nimelt-probe-fix
+proposed_at: 2026-08-25T21:30Z
+target_file: canon/learnings.md
+target_section: Workflow rules (probe discipline)
+priority: routine
+status: pending
+---
+
+## Proposed rule
+
+Two halves. (1) A probe observable moving in the EXPECTED direction is not
+a passed gate until the MECHANISM is checked: ask where the signal comes
+from spatially and whether the responsible dynamics is the one the
+production run will have. (2) Any stage that equilibrates a liquid against
+a HELD (rigid) crystal template must budget for epitaxial/confinement
+freezing: a commensurate film < ~2-3 nm between template faces (PBC counts
+as a second face) can crystallize ABOVE bulk Tm; check film thickness
+against the ~1 nm/wall ordering reach and keep such stages to the few-ps
+minimum, or thermalize the template instead of freezing it.
+
+## Where it bit
+
+2026-08-25, ni-melting-point-eam thread 01. The measure probe at 1450 K
+showed fcc rising in the liquid region -- the DESIRED "freezing below Tm"
+sign -- and was passed. The rise was actually epitaxial freezing of the
+15 A liquid film against the rigid guarded-settle template, and the full
+7-rung production ladder (1300-1600 K) then ran on cells whose liquid had
+fully crystallized before measurement start (transverse-order minimum
+0.38-0.54 in every final config, no melting even at 1600 K). ~3.5 h of
+cluster time measured crystal annealing. The spatial check that would have
+caught it at probe time -- WHERE is fcc growing, and does it grow with the
+template held? -- takes one awk pass over the profile.
+
+## Suggested wording
+
+Designer's choice; the confinement-freezing half may fit better in
+style/lammps.md near the boundary-conditions rule 1.13. Not lintable;
+it is a physics-review step for the probe-gate checklist.
+
+## Designer review notes
+
+[pending]

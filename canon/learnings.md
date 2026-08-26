@@ -170,6 +170,23 @@ lesson:
   `cd "$SLURM_SUBMIT_DIR"`, pre-run existence check for every referenced
   input file, descriptive `--job-name`, `LMP_BIN="${LMP_BIN:-lmp}"`.
 - `--reservation=Erik` only when Erik says "urgent".
+- **The job sends its own notification mail; Slurm's is only a backstop.**
+  Slurm's `--mail-type` mail is subject-only with an empty body, and the
+  subject leads with `Slurm Job_id=...` boilerplate, so at typical mail-list
+  width the job name is truncated away and the status and submission
+  directory never arrive at all. Every submit script therefore sources
+  `slurm-notify.sh` and calls `lmps_notify_arm` before the `srun`: subject
+  `[LMPS] <STATUS> <job name> <job id>`, body carrying the full job name,
+  the ABSOLUTE submission directory, status + exit code, resources, wall
+  time and the tails of stdout/stderr. Slurm's own mail is cut back to
+  `--mail-type=FAIL,TIME_LIMIT` -- the cases where the helper cannot run
+  (node failure, OOM-kill, SIGKILL). The helper is pre-flighted with the
+  other inputs and a missing one aborts the submit script; it is never
+  sourced with `|| true`, because a notification that quietly stops
+  arriving is indistinguishable from a quiet queue. Rule and skeleton:
+  `canon/style/shell.md` 6; helper: `canon/templates/slurm-notify.sh`.
+  (Surfaced 2026-08-26 by Erik: "the emails sent do not contain a body,
+  and their subject line is too long to be displayed.")
 
 ## Cluster discipline
 
@@ -265,6 +282,87 @@ lesson:
   desktop-app TCC gate, no bridge re-export), or driven by an
   `rsync`-over-ssh that enumerates cluster-side instead of through sshfs.
 
+- **Background traversers on the mount (extends "Two mount failures").**
+  Time Machine and antivirus scanners walk `~/cluster-mounts` unless
+  excluded; exclude the tree once per machine (System Settings -> General ->
+  Time Machine -> Options -> "+", or `sudo tmutil addexclusion -p
+  ~/cluster-mounts`, plus the scanner's own exclusion list). The Cowork
+  desktop VM (`com.apple.Virtualization.VirtualMachine`) keeps open handles
+  on every file and directory a session has listed or staged under a
+  connected mount subtree for the life of the session; those handles pin the
+  volume, so quit the app (or disconnect the folder, when the UI allows it)
+  BEFORE unmounting, and read a failed `umount` ("Resource busy") as "a
+  session still holds it", not as a broken mount. Diagnostic that settles
+  "the mount disappeared": mount-table entry + live sshfs process + live
+  master + empty listing + a SUCCESSFUL exact-path `stat` = the L15 stale
+  view -- remount and re-connect the folder; nothing is lost. (2026-08-25,
+  M5: capture during a "disappearance" showed the transport fully alive, ~70
+  VM handles on the volume including the files a session had staged minutes
+  before, a Time Machine backup walking cluster-mounts from 12:59, and the
+  wsavd scanner behind it; `ls` empty while `stat` on the project dir
+  succeeded. Merged from proposal 2026-08-25-1200.)
+
+- **Root cause of the empty-listing states (closes the loop on "Two mount
+  failures" and "Background traversers").** macFUSE 5.3.x re-issues readdir
+  with a non-zero offset on an SFTP directory handle sshfs has already
+  exhausted; sshfs answers EMPTY and caches that answer (upstream fix:
+  libfuse/sshfs PR #379, open as of 2026-08-25 -- re-test and drop the
+  workarounds when a fixed release lands). The background traversers are an
+  amplifier, not the cause: a recurrence 7 min after a fresh remount with
+  Time Machine already excluded ruled them out as root cause. Separately,
+  macFUSE >= 5.3 no longer daemonizes sshfs -- a mount command that seems to
+  hang has usually SUCCEEDED, with sshfs sitting in that terminal's
+  foreground, where a stray ctrl-C/ctrl-Z or a closed tab kills or freezes
+  the mount (this retroactively explains the original "mount command hangs"
+  report; both 2026-08-25 captures show sshfs with the shell as parent, S+).
+  **THE FIX, deployed and holding (amended 2026-08-26, proposal
+  2026-08-25-2010).** Do not prescribe the mitigations this bullet originally
+  carried -- the evening of the same day measured them false:
+
+  - The bug is **NOT macFUSE-5.3-specific**: it reproduced TWICE on macFUSE
+    5.2.0, 4-7 min after fresh mounts. **A version downgrade is not a fix**
+    (the 5.2 downgrade only restored sshfs daemonization).
+  - **`-o dir_cache=no` does not fix it either.** `ls -la` exits 0 with
+    correct `.` metadata and zero entries: the empty answer is generated
+    fresh, not served from sshfs's cache. Keep the option (a blanked listing
+    recovers on the next `ls` instead of staying blind), but it is a
+    softener, not a cure.
+  - **What actually works**: sshfs built from libfuse/sshfs **PR #379**
+    (snapshot readdir), built by `DEVEL/build-sshfs-pr379.sh` and installed
+    as `/opt/homebrew/bin/sshfs-pr379` alongside the untouched stock binary;
+    `dotfiles/shell/cluster-mounts.zsh` prefers it and falls back to stock
+    on machines that lack it. Deployed on M5 2026-08-25.
+    **Confirmed by Erik 2026-08-26: mounts have worked without problems
+    since.** Watch upstream and return to stock when a release carries the
+    fix -- and re-test at depth before believing it.
+  - Second, distinct flavor -- **stale file CONTENT** (a changed file serving
+    old pages) -- is fixed by `-o auto_cache`; `attr_timeout=2` bounds the
+    staleness to ~2 s past the next access.
+  - **Diagnostic**: the mount table shows only kernel flags and can NEVER
+    confirm mount options like `auto_cache`. Read `pgrep -fl sshfs` instead.
+
+  (Diagnosed 2026-08-25 on M5 from two capture-script runs, 13:14 and 13:49.
+  Merged from proposals 2026-08-25-1410 and 2026-08-25-2010. The amendment
+  exists because the morning state of this bullet, merged hours earlier,
+  actively misled a live session into re-prescribing a remount and a
+  downgrade that were already known insufficient -- canon that is stale in
+  the direction of "we fixed it" is worse than canon that is silent.)
+
+- **Health-check a mount at the depth the work needs; a root listing proves
+  nothing (extends L15).** A stale mount has been observed in a THIRD state:
+  root lists correctly, depth-3 listings return empty, depth-4 listings
+  BLOCK, while `stat` succeeds at every depth (it needs no readdir) -- and a
+  remount changed the symptom without fixing it. Rules: (1) before a harvest
+  or mirror, enumerate one LEAF directory of the tree the work touches and
+  count entries against expectation; (2) a mirror is unverified until file
+  counts are compared source vs destination per run directory -- rsync exits
+  0 on an empty readdir; (3) after a remount, re-test at depth, do not
+  assume; (4) when deep readdir blocks through the bridge, stop retrying and
+  hand Erik a command for his own shell -- his shell talks to sshfs
+  directly. (2026-08-05, ni-h-phase-diagram harvest: five of six run dirs
+  mirrored, the sixth silently skipped, caught only by the file count.
+  Merged 2026-08-25 from inbox 2026-08-05-1210.)
+
 - **Harvest the failure mode, not just the failure count.** For every
   task that did not complete, the harvest records: the terminating
   error verbatim, the step it died at versus its nominal length, and
@@ -346,6 +444,20 @@ lesson:
   slurm noise + AppleDouble sidecars). See clusters.yaml cmmg quirks
   `cluster_bound_files_write_via_mount` (outbound) and
   `important_outputs_mirrored_to_mac` (inbound, curated).
+- **A fix applied on one side lands on both sides, in the same turn.** When
+  an input, script or parameter file is corrected on the cluster (or on the
+  Mac), the corrected file is mirrored to the other tree immediately and the
+  two copies `cmp`'d -- the survivability tier must never hold only the
+  broken version. A later session that finds the two copies divergent treats
+  the divergence itself as a defect to record, not as noise. (2026-08-20/24,
+  ni-h-at-dislocs: the `group HGRP clear` fix that unblocked probe 22344727
+  was applied on the cluster on 08-20; the backed-up Mac .in still carried
+  the exact defect four days later, so the only backed-up copy of that input
+  was the broken one. Merged 2026-08-25 from inbox 2026-08-24-1558.)
+  Cheap second half that catches the case where the fixing session never
+  comes back: a session RESUMING a thread whose last recorded event was a
+  FAILURE `cmp`s the Mac and cluster copies of that run's inputs before
+  proposing anything.
 - **Analysis plan before data-collection plan.** When the work involves
   extracting a number (or set of numbers) from simulation data —
   Cij from σ-ε slopes, a₀ from box length at minimum, anything
@@ -359,6 +471,24 @@ lesson:
   it. The correct order is *what would I fit?* → *what data does
   that fit need?* → *what runs produce that data?*. Cross-reference
   L24 (fit one order higher than target coefficient).
+- **Scalar-reducing helpers name their convergence filter; a verdict for
+  question A is not a quality label for question B.** Any helper that
+  REDUCES a data set to a headline scalar -- an interpolated crossing, a
+  fitted slope, a plateau value, a coexistence mu -- either restricts its
+  inputs to points free of the failure modes that corrupt THAT quantity
+  (named explicitly at the call site), or takes an explicit
+  `allow_unconverged=True` and carries that fact in its returned object so
+  it reaches the figure caption and the .dat header. The filter is
+  per-quantity, not a generic `converged` boolean: `filling` corrupts an
+  x(mu) bracket but `noise-limited` does not corrupt a ln-x fit -- on
+  2026-08-05 filtering a dilute-branch fit on generic `converged` removed
+  every noise-limited point and turned a failed slope check into a
+  reported pass. Diagnostic and plotting helpers stay unrestricted: the
+  open markers are the point of drawing them. Fix the helper (the rule),
+  not the one number. (Merged 2026-08-25 from inbox 2026-08-24-0930 --
+  `nih_loaders.mu_at_half()` interpolated the project's mu(x=0.5) through
+  run 09's `filling`-flagged point, 1.9 meV -- and 2026-08-05-1105, the
+  ln-x fit above. Same class as the 2026-08-05 sigma_x withdrawal.)
 - **Per-timestep thermo dump for FFT diagnostics on dynamics runs.**
   Whenever a thread runs NVE / NVT / NPT (or any MD that's coupled to
   a thermostat or barostat), include a per-timestep dump of temperature,

@@ -338,6 +338,48 @@ the design, not in a follow-up. Surfaced 2026-05-31 Thread 03.
   easily copy paste". Promotes the identical instruction from the
   2026-07-28 SCIENCE-KICKOFF handoff to canon.)
 
+- **Every block carries a machine tag, and the tag is the first thing in
+  it.** Not a footnote, not implied by context, not "then submit it":
+  `**on the MAC (M5), in a local shell**` or `**in your CMMG SHELL**`.
+  When a sequence crosses machines -- stage from the Mac, ssh, submit on
+  the cluster, pull back to the Mac -- each crossing is its OWN numbered
+  block with its own tag. A reader who pastes block 3 into the wrong
+  shell is the failure this prevents, and it is silent: an `rsync` run
+  on the cluster instead of the Mac succeeds and copies the wrong way.
+
+- **Never emit a `<PLACEHOLDER>` from `canon/clusters.yaml`, and never
+  substitute a guess for one.** That file is identity-scrubbed;
+  `<CLUSTER_USER>` and `<CLUSTER_HOST>` are pointers to
+  `canon/local/clusters.local.yaml`. Resolve them there, or say you
+  cannot. **A cluster's project name is not a hostname** -- `cmmg` is a
+  key in `clusters.yaml` and an alias on Erik's Mac; the host is
+  `<CLUSTER_HOST>` and the user is `<CLUSTER_USER>`, and both belong in
+  every ssh / scp / rsync / sshfs target (L21).
+  Run `canon/templates/lint-handoff.sh` over any hand-off before sending
+  it: it catches unresolved placeholders, bare-host targets, and blocks
+  with no machine tag. (Set 2026-08-24 after a hand-off named `cmmg:`
+  as an rsync target and tagged no block with a machine. L42.)
+
+- **The first hand-off into a NEW tree creates the remote directory
+  itself.** `rsync` creates only the LAST component of a destination
+  path; every parent must already exist. The first thread of a new
+  project is exactly when nothing above it does, so a staging block
+  written from the template of an existing project fails on its first
+  use. Either lead with an explicit
+
+  ```
+  ssh <user>@<host> 'mkdir -p <absolute remote dir>'
+  ```
+
+  or fold it into the transfer with
+  `--rsync-path='mkdir -p <dir> && rsync'`, which costs one
+  authentication instead of two and does not depend on the local rsync
+  version (`--mkpath` needs rsync >= 3.2.3 on the SENDING side, which
+  macOS does not reliably give you). (Set 2026-08-24: the
+  ni-melting-point-eam thread 01 staging block assumed
+  `/cmmc/ptmp/<CLUSTER_USER>/NI-MELTING-POINT-EAM/` existed. It did not, and the
+  transfer died with `mkdir ... failed: No such file or directory`.)
+
 ## Plot defaults
 
 - **gnuplot-friendly format.** Space-separated columns; `#`-prefixed
@@ -371,6 +413,17 @@ the design, not in a follow-up. Surfaced 2026-05-31 Thread 03.
   x ~ 0 to x ~ 1 is evidence about the grid, not about the physics.
   (The 2026-07-30 merge exposed exactly this: the EAM had ZERO points
   inside its own 300 K two-phase window while the MEAM had four.)
+  Extension for first-order transitions (2026-08-25, from inbox
+  2026-08-05-1110): additionally report the **widest interval in the order
+  parameter containing no CONVERGED state**. A finite cell inside a
+  two-phase region cannot converge to an intermediate value however long it
+  is sampled, so the emptiness is physics rather than sampling, and the
+  interval's endpoints ARE the coexisting compositions -- the diagnostic and
+  the binodal are the same measurement. An empty interval of order the grid
+  spacing is the honest way to say "no transition resolvable at this
+  resolution". Counting converged points inside a naive window is not
+  sufficient: they cluster on the phase branches (Pezold-EAM 600 K had five
+  points inside 0.05 < x < 0.95, all sub-stoichiometric beta).
 - **Give the region of interest its own axis.** If part of the data
   runs away in the plotted quantity (e.g. tetrahedral overcharge,
   x → 2.5, against a transition at x < 1), add a companion figure

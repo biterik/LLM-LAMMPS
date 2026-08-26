@@ -281,6 +281,72 @@ per-atom volume (`compute voronoi/atom`) before calling the result a stress;
 quoting its output directly in GPa is wrong by a factor of the atomic volume.
 (Erik, 2026-08-20.)
 
+### 1.15 Derived diagnostic columns must earn their place
+
+Before adding a derived per-step or per-block output column, state in the
+input header what it measures that the existing columns do not -- and verify
+that claim on the probe by regressing the new column against the ones already
+written. A column that is a deterministic function of an existing column
+carries zero information: either drop it, or label it explicitly as a
+convenience restatement so a later reader does not assume it means something.
+(2026-08-05: `V_oct_ideal` / `V_tet_ideal` added to three runs to resolve
+oct-vs-tet occupancy turned out to be exactly a^3/6 and a^3/24 of the a_eff
+column already present, verified to 1e-5 over all 16256 rows -- four runs of
+extra output with no occupancy information. Same failure class as the
+2026-08-04 `metric volume` gotcha: a quantity assumed to discriminate
+structure that is actually geometry. Merged 2026-08-25 from inbox
+2026-08-05-1115.)
+
+### 1.16 No `${}` inside `$(...)` formulas; variables in formulas are `v_name` (L44)
+
+`${name}` is parse-time substitution; `$(...)` is an equal-style formula.
+They must never nest. The parser does not substitute `${}` inside an
+extracted formula, and a `$` is invalid formula syntax, so `$(ly/${L})`
+dies with `ERROR: Invalid syntax in variable formula (src/variable.cpp)`.
+Inside quoted strings the trap is doubled: the variable doc says verbatim
+that "it is a mistake to enclose a variable formula in double quotes if it
+contains variables preceded by $ signs ... the quotes prevent variable
+substitution" -- `print` then evaluates the formula itself at run time and
+hits the literal `${}`. Inside ANY formula, reference variables ONLY as
+`v_name`; an index-style `-var` variable works if its string is numeric
+(`$(ly/v_L)`).
+
+Greps:
+
+```
+# hard gate — ${} nested inside $(...): must return nothing
+grep -nE '\$\([^)]*\$\{' <input>
+# read-and-confirm — quoted strings mixing ${} and $(...): every $() hit
+# must survive print's own late evaluation (v_name references only)
+grep -nE '"[^"]*\$\{[^"]*\$\([^)]*\)' <input>
+```
+
+(2026-08-24, ni-melting-point-eam probe 22719499: FAILED 18 s after a clean
+NPT stage at the first `print` -- five `$(...${L}...)` instances across the
+two thread-01 inputs. The existing checks verify every `${VAR}` is DEFINED
+(§1.8) and that runtime quantities use `$(...)` (§1.1); neither constrains
+WHERE `${}` may appear, so both passed. Merged 2026-08-25 from inbox
+2026-08-25-1545.)
+
+### 1.17 Deleted IDs must not stay referenced by thermo_style (L45)
+
+`uncompute ID` / `unfix ID` remove the object, not its references. The
+active `thermo_style custom` line is re-resolved at the next system init
+(`run`, `minimize`, `write_data`, `write_restart`, `rerun`) -- a dangling
+`c_ID`/`f_ID` there errors THEN, far from the deletion. Teardown order for
+every staged input: unfix the stage's fixes, RESET `thermo_style` to a line
+without the stage's computes, then `uncompute`. The lint mechanizes the
+thermo case (join `&` continuations, then: deletion of a referenced ID +
+a later init before a clearing `thermo_style` reset = fail). Fixes, dumps
+and variables that consume `c_ID`/`f_ID` are the same class -- walk them
+manually at every `uncompute`/`unfix`.
+
+(2026-08-25, ni-melting-point-eam prepare probe attempt 2: `write_data`
+died on stage-2 `thermo_style ... c_TEMP_HOT` after `uncompute TEMP_HOT`;
+stages 1-2 clean. Second submission lost to the same input; all three
+commands are individually correct, only the order is wrong. Merged
+2026-08-25, designer+pilot session, no inbox round-trip -- lock was held.)
+
 ## 2. Rules from lessons.md
 
 This section references the canonical entries in `../lessons.md`. The
@@ -428,7 +494,8 @@ not `{STRUCTURE}`. (`learnings.md` LAMMPS-specific.)
 
 ## 4. Automation
 
-`../templates/lint-lammps-input.sh` mechanizes §1.1–1.5 + 1.8. The
+`../templates/lint-lammps-input.sh` mechanizes §1.1–1.5 + 1.8 + 1.16 + 1.17 (thermo case)
+(hard gate only; the quoted-string read-and-confirm grep stays manual). The
 pilot runs it as part of pre-flight on every input. Manual review still
 required for §1.4 (MEAM element index), §1.6 (log line position),
 §1.7 (cadence sanity), §1.9 (version doc-check) — those are not purely

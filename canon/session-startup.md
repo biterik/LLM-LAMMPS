@@ -58,6 +58,46 @@ cp -R <REPO_ROOT>/canon/local.example <REPO_ROOT>/canon/local
 Framework (designer) work can proceed without it; **cluster or pilot work
 cannot**.
 
+**(b2) RESOLVE THE CLUSTER IDENTITY -- do not stop at "the folder exists".**
+Open `canon/local/clusters.local.yaml` and read out, for the cluster this
+session will use, the real `ssh.user`, `ssh.host` and `scratch`. Echo them once
+in the startup brief, e.g.
+
+```
+cmmg resolves to <CLUSTER_USER>@<CLUSTER_HOST>, scratch /cmmc/ptmp/<CLUSTER_USER>
+```
+
+**IN CHAT ONLY. Never write the resolved values into `SESSIONS.md`** (or any
+other tracked file). `SESSIONS.md` is committed to the PUBLIC repo, and this
+echo is exactly how the real user, host and scratch path got there ten times
+over -- every session that did its job correctly re-leaked them, which is why
+this is a canon rule and not a one-time cleanup. The session entry records the
+placeholder form (`cluster_identity: cmmg -> <CLUSTER_USER>@<CLUSTER_HOST>,
+scratch /cmmc/ptmp/<CLUSTER_USER>`); the real values are read from
+`canon/local/` when needed and spoken aloud to Erik, never transcribed.
+The same applies to run paths quoted in `in_flight` and `notes`: write
+`/cmmc/ptmp/<CLUSTER_USER>/<PROJECT>/...`, not the resolved path.
+Guard: `canon/templates/lint-no-identity.py` catches it -- run it before any
+push, and treat a failure as a bug in the writing session, not in the linter.
+(Added 2026-08-26 after a scrub of 24 leaked values across 6 tracked files.)
+
+**Why this is its own step.** `canon/clusters.yaml` -- the file a session
+naturally reaches for -- is identity-scrubbed for the public repo and carries
+`<CLUSTER_USER>` and `<CLUSTER_HOST>` placeholders. Those are POINTERS to
+`canon/local/`, not values, and a session that has only checked "does
+`canon/local/` exist?" has not read them. Nothing then stops it emitting a
+guess -- the cluster's project NAME, an ssh alias off Erik's Mac, a
+half-remembered host -- into a command Erik is asked to paste.
+
+Where it bit: 2026-08-24, session 2026-08-24-0753-status-readout handed over a
+staging command targeting `cmmg:`. `cmmg` is this project's name for the cluster
+and an alias in Erik's local ssh config; it is not a host and resolves nowhere
+else. See L42.
+
+**A cluster name is never a host.** `cmmg`, `raven`, `viper` are the keys of
+`clusters.yaml`. The host always comes from `canon/local/clusters.local.yaml`,
+always with the user attached (L21).
+
 **(c) Can this session see the working set?** Try to list the simulation
 root and the cluster mount from `local.yaml`'s `roots:`. Both must be
 readable before any pilot work.

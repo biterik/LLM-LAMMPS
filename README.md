@@ -105,6 +105,7 @@ addresses and Mac home paths appear only as placeholders:
 | `<CLUSTER_HOST>` | The cluster login host (e.g. `login.mycluster.edu`) |
 | `<NOTIFY_EMAIL>` | Address for Slurm job mail (`--mail-user`) |
 | `<MAC_USER>` | Local macOS username, where it appears in example paths |
+| `<GITHUB_USER>` | Your GitHub handle, where sibling tool repos are cited |
 | `<DEVEL_ROOT>` | Your dev tree (where the tool repos live) |
 | `<REPO_ROOT>` | The root of *this* repo, resolved from wherever it is checked out |
 

@@ -507,12 +507,17 @@ clusters:
         - lammps/241119
         - lammps/250722
     sbatch_defaults:
-      get-user-env: L
+      # get-user-env REMOVED 2026-08-02 (this Slurm build rejects the
+      # argument form). mail-type cut back to the backstop set 2026-08-26:
+      # BEGIN/END are sent by the notify helper, with a body.
       hint: nomultithread
-      mail-type: BEGIN,END,FAIL
+      mail-type: FAIL,TIME_LIMIT
       mail-user: <NOTIFY_EMAIL>
       output: "%x.out"
       error: "%x.err"
+    notify:
+      helper: /cmmc/ptmp/<CLUSTER_USER>/BIN/slurm-notify.sh
+      source_of_truth: canon/templates/slurm-notify.sh
     occasional_overrides:
       reservation: Erik                # only when urgent; not standard
     docs_url: "https://docs.mpcdf.mpg.de/doc/computing/clusters/systems/Sustainable_Materials.html"
@@ -594,7 +599,7 @@ A third layer alongside `style/` (mandatory rules) and `templates/` (executable 
 
 External programs and promoted-internal utilities the pilot invokes instead of hand-rolling work. Two kinds of tool, **one abstraction**:
 
-- **External tools** Erik already owns — installed in `~/bin/`, their own GitHub repos, still under development. E.g. LEGO (`github.com/biterik/LEGO`), LEGO-TOOLS, dcreator (`github.com/biterik/dcreator`).
+- **External tools** Erik already owns — installed in `~/bin/`, their own GitHub repos, still under development. E.g. LEGO (`github.com/<GITHUB_USER>/LEGO`), LEGO-TOOLS, dcreator (`github.com/<GITHUB_USER>/dcreator`).
 - **Emergent/internal tools** — operations the pilot hand-rolls repeatedly (file checks, log parsing, curated mirrors, …). When the same operation recurs **3+ times**, it gets promoted to a real, tested, documented tool (see the promotion trigger in `canon/learnings.md`).
 
 **The tool card.** Both kinds are described to the pilot by one plain-file contract — a *tool card* (`canon/tools/<id>.card.yaml`, template `tool-card.skel`), exactly parallel in role to `style/` and `examples-catalog.md`. A card is the contract the pilot reads to call the tool correctly: id, purpose, owner, upstream repo, per-platform invocation (`exec.mac` / `exec.cluster`), `run_where` routing, I/O contract, `version` + `last_verified` stamp, and accrued gotchas. The pilot reads the **card**, never the tool's source. `canon/tools/tools-catalog.md` is the one-line index, pinned in session-start state.

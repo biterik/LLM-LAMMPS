@@ -7,8 +7,18 @@ clusters:
     mount:
       local:  ~/cluster-mounts/cmmg/
       remote: /cmmc/ptmp/<CLUSTER_USER>/         # user ptmp; pilot scope ends here
+      # BINARY MATTERS AS MUCH AS THE OPTIONS (2026-08-26): use the
+      # PR #379 build (/opt/homebrew/bin/sshfs-pr379, from
+      # <DEVEL_ROOT>/build-sshfs-pr379.sh) where present. Stock sshfs
+      # returns EMPTY directory listings when macFUSE re-reads an
+      # exhausted SFTP dir handle, on 5.2 and 5.3 alike; no option
+      # combination fixes that, and no version downgrade does either.
+      # dotfiles/shell/cluster-mounts.zsh selects it automatically.
+      # Erik confirms trouble-free mounts since deployment.
+      sshfs_binary_preferred: /opt/homebrew/bin/sshfs-pr379
       sshfs_options:                      # L15 — fixes stale-view problem
         - auto_cache                      # invalidates cache on mtime/size change (the load-bearing one)
+        - dir_cache=no                    # a blanked listing recovers on the next ls (softener, not a cure)
         - attr_timeout=2
         - entry_timeout=2
         - negative_timeout=2
@@ -111,10 +121,54 @@ clusters:
       # sbatch_rejects_get_user_env_argument_form). Job-env determinism
       # comes from `module purge` + explicit `module load` (L11).
       hint: nomultithread
-      mail-type: BEGIN,END,FAIL
+      # MAIL: Slurm's own mail is a BACKSTOP ONLY -- subject line, no body
+      # (see `notify` below and canon/style/shell.md 6). BEGIN and END are
+      # deliberately OFF: those two are the ones the notify helper sends
+      # itself, with a readable subject and a body. FAIL,TIME_LIMIT stay on
+      # because they are the cases where the helper cannot run at all --
+      # node failure, OOM-kill, an scancel that goes straight to SIGKILL.
+      # A doubled FAIL mail (ours + Slurm's) is intended: ours carries the
+      # detail, Slurm's proves a mail arrives even when ours could not.
+      mail-type: FAIL,TIME_LIMIT
       mail-user: <NOTIFY_EMAIL>
       output: "%x.out"
       error: "%x.err"
+    notify:
+      # The body-carrying notification helper. Sourced by every submit
+      # script; see canon/templates/slurm-notify.sh for the API and
+      # canon/style/shell.md 6 for the rule.
+      helper: /cmmc/ptmp/<CLUSTER_USER>/BIN/slurm-notify.sh
+      source_of_truth: canon/templates/slurm-notify.sh
+      deploy: >-
+        rsync -av <REPO_ROOT>/canon/templates/slurm-notify.sh
+        <CLUSTER_USER>@<CLUSTER_HOST>:/cmmc/ptmp/<CLUSTER_USER>/BIN/
+      # VERIFIED 2026-08-26 by slurm-notify.probe.slurm, job 22731708 on
+      # cmmg002: ALL FOUR mails delivered WITH BODIES (2 x STARTED, one
+      # per array task, + COMPLETED + FAILED), plus Slurm's own
+      # subject-only array-summary FAIL backstop. Concurrent delivery
+      # from one node in the same second is clean.
+      mta_on_compute_nodes: verified
+      mta_inventory_2026_08_26: |
+        cmmg002:  `command -v sendmail` -> NOT FOUND
+                  /usr/sbin/sendmail    -> executable   <-- the one that works
+                  /usr/bin/mail         -> present
+                  /usr/bin/mailx        -> present
+        i.e. sendmail is NOT on the compute-node PATH but IS executable at
+        its absolute path. A helper that probed only `command -v sendmail`
+        would have silently fallen through to `mail` and lost the MIME
+        header; one that probed only the absolute path would break on a
+        cluster that ships sendmail on PATH instead. Probe BOTH. This is
+        why slurm-notify.sh tests `command -v` first and `-x
+        /usr/sbin/sendmail` second -- verified load-bearing, not defensive
+        clutter.
+      slurm_cluster_name: cmmc          # NB: Slurm's own cluster name is
+                                        # `cmmc`; `cmmg` is this framework's
+                                        # key and the partition suffix. The
+                                        # notification body prints Slurm's
+                                        # value, so a mail reads
+                                        # "cmmc / s.cmmg". Same class as L42:
+                                        # our name for a machine is not the
+                                        # machine's name for itself.
     occasional_overrides:
       reservation: Erik                   # only when Erik says "urgent"
     docs_url: "https://docs.mpcdf.mpg.de/doc/computing/clusters/systems/Sustainable_Materials.html"
