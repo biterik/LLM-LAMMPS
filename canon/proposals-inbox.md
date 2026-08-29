@@ -3262,3 +3262,607 @@ was its own. The reusable half of this proposal is the question that was not
 asked -- WHERE is the signal coming from -- not the melting-point physics, and
 that reads better in the first person than sanded down into canon voice.
 Not lintable; it is a physics-review step on the probe-gate checklist.
+
+### 2026-08-26-1845-gate-reference-must-be-the-same-quantity
+- status: merged   # 2026-08-29 designer pass (session 2026-08-29-1442-designer-inbox-merge)
+- designer_review: |
+    MERGED as filed, both halves, and both are load-bearing. Target was right:
+    learnings.md "A gate is a mechanism, not a sign" gains three corollaries --
+    the reference clause, the passes-near-its-own-tolerance diagnostic, and the
+    denominator clause from the second instance. Also promoted to lessons.md
+    L46, as the proposal suggested: two independent instances in one day, both
+    with clean where-it-bit records, neither LAMMPS-specific.
+    The denominator clause was kept as a separate corollary rather than folded
+    into the reference one -- they fail differently (a wrong reference reports
+    on nothing; a missing denominator reports on a subset) and a session
+    checking one will not automatically check the other.
+- from: session 2026-08-26-1713-all-projects-status (pilot)
+- class: gate design
+- proposal: |
+    A gate's REFERENCE VALUE must be the same quantity the gate COMPUTES,
+    and the tolerance must be tight enough that it could fail. State both
+    in the gate's own output: what was measured, where, and what it is
+    being compared against.
+
+    Canon already says "a gate is a mechanism, not a sign" and "every
+    probe needs at least one gate that a physically wrong run would FAIL".
+    Both are about the gate's SUBJECT. Neither constrains its REFERENCE,
+    and a gate whose reference is a different quantity is not a weak gate
+    -- it is a gate that reports on nothing, in green.
+
+    Concrete rule to add: when a gate compares a computed number against
+    a value quoted from another thread, the writing session must LOCATE
+    that value in the source data before using it -- confirm the region,
+    the averaging window and the definition it was measured under -- and
+    record the location in the gate's comment. A number quoted in prose
+    ("the far-field value", "the bulk step") is a pointer to a
+    measurement, not the measurement.
+
+    Diagnostic that catches it cheaply: if the gate passes at a large
+    fraction of its own tolerance, treat that as a FAILURE TO INVESTIGATE,
+    not as a pass. A correct gate on correct data usually passes by orders
+    of magnitude, because it is comparing a thing to itself.
+- where_it_bit: |
+    2026-08-26, ni-h-at-dislocs-eam-meam thread 02 run 01, the octahedral
+    pre-fill. GATE 4 required the recomputed far-field background to
+    reproduce thread 01's measured rigid strain step, -24.32 meV. It
+    computed the step between the EXTREME (111) planes of the +-70 A map
+    zone and got -27.37 meV, passing a 4 meV tolerance by 3.05 meV.
+
+    Investigated rather than accepted. thread 01's own background is
+    recoverable exactly as E_ins - E_seg from its published per-site map;
+    compared plane by plane, the recomputation agreed to 0.0005 meV over
+    all 99 octahedral z-planes -- the background was right. The two values
+    thread 01 quoted as its far-field pair turned out to sit at z = 76.0
+    and z = 180.0 A, ~50 and ~53 A from the glide plane (about one decay
+    length lambda = 53 A), NOT at the +-68.5 A zone edges. Two different
+    quantities, differing by exactly the amount the loose tolerance
+    absorbed.
+
+    Fixed by evaluating the background at the planes the reference was
+    measured at. The gate then agrees to 0.007 meV and its tolerance drops
+    from 4 meV to 0.5 meV -- a gate that can now actually fail.
+
+    Cost: nothing, because the near-miss was investigated before the
+    production submission. That is the point -- the same gate would have
+    shipped ten pre-filled cells with a green light on a comparison that
+    meant nothing.
+- second_instance: |
+    2026-08-26, SAME thread, SAME day, found hours later. The pre-fill's
+    background was looked up BY BIN with a silent fallback when a bin held
+    no far-field sites. GATE 3 asked "does every background LAYER have
+    enough far-field sites for a median" and truthfully answered yes --
+    for the 69 layers that HAD any. It could not see the 30 bins that had
+    NONE, because those never entered the background dict to be counted.
+    Result: 13.1 % of octahedral sites assigned a background wrong by a
+    mean of 13.6 meV and up to 27.2 meV, concentrated on exactly the
+    near-core sites the thread is about, with all seven gates green.
+    What caught it was not a gate: it was noticing that two numbers
+    describing the same thing disagreed -- 99 z-bins in the output profile
+    against 69 background layers in the gate -- and refusing to let that
+    pass. THE ADDITIONAL RULE THIS ARGUES FOR: a gate that quantifies a
+    population must state the DENOMINATOR it covers, and any object the
+    computation touches but the gate does not count is the bug. "N of the
+    layers are fine" is not a gate until it says N of how many.
+    Generalises: a silent fallback (dict .get with a default, a clamp, an
+    except-pass) is invisible to every gate that only inspects the objects
+    that took the normal path.
+- target: |
+    canon/learnings.md, the "a gate is a mechanism, not a sign" bullet --
+    add the reference-value clause, the passes-near-its-own-tolerance
+    diagnostic, and the denominator clause from the second instance.
+    Probably also a lessons.md entry: two independent instances in one
+    day, both with clean where-it-bit records, and neither is
+    LAMMPS-specific.
+
+## 2026-08-27-0905-job-state-and-job-marker-can-disagree-both-ways
+
+**status: merged** -- 2026-08-29 designer pass (session 2026-08-29-1442-designer-inbox-merge).
+
+**Designer review.** MERGED, but NOT as a standalone rule: this proposal and
+2026-08-28-1610 are about THE SAME JOB (22730595_2) and, taken separately,
+canon would have contradicted itself. This one ends "marker present +
+scheduler RUNNING -> a hung step, cancel it"; the later one records that the
+same row was still printing RUNNING after the job had been cancelled and had
+ceased to exist, and that acting on it produced a false alarm and an
+`Invalid job id specified`. Merged TOGETHER into one bullet in learnings.md
+"Cluster discipline" -- the four-case table from here, the accounting-record
+mechanism and the `squeue` confirmation step from there -- and the operative
+half restated in `session-startup.md` step 1b, which is where a session will
+meet it. The "identical elapsed times do not mean identical states" line was
+kept verbatim; it is the cheapest part of the rule.
+
+
+Filed by pilot session 2026-08-27-0852-portfolio-status. Class-level, not
+an instance fix.
+
+**Proposal.** Step 1b reconciliation must cross-check the run's OWN
+completion marker against the SCHEDULER's state, and treat a disagreement
+as a finding in its own right. Neither source alone is sufficient, and
+they fail in opposite directions:
+
+- `.out` marker present, scheduler says COMPLETED -> genuinely done.
+- `.out` marker ABSENT, scheduler says RUNNING -> genuinely running.
+  Confirm by an output mtime, not by the absence of the marker: a job
+  that died silently looks identical from the .out alone.
+- `.out` marker ABSENT, scheduler says COMPLETED -> the job exited
+  without finishing. This is the failure the 2026-08-20 sweep was written
+  to catch.
+- **`.out` marker PRESENT, scheduler says RUNNING -> a HUNG STEP.** The
+  science is finished and harvestable; the allocation is being burned for
+  nothing until the wall clock cap. Cancel it.
+
+**Evidence, 2026-08-27.** Array 22730595 (hydride-cycle thread 05 /
+phase-diagram thread 03 run 15, mu bracket 900 K, 16 ranks per task,
+24 h cap). Task 2 (mu = -2.45) printed its full gate block and `JOB DONE`
+-- the last line of the submit script -- at 2026-08-26T13:49Z, and wrote
+a complete results dir (ave, trace, traj, final-state, ave tail at step
+88000, identical in shape to the eight tasks sacct calls COMPLETED).
+sacct at 2026-08-27T08:5xZ nonetheless reported the task, and its lmp
+step `22730595_2.0`, as RUNNING with 22:56:30 elapsed. Sixteen cores held
+for roughly nineteen hours after the calculation ended.
+
+The same paste showed task 9 (mu = -2.10) also RUNNING at the identical
+elapsed time -- and that one was real, still writing its trace file that
+minute. **Identical elapsed times do not mean identical states**: array
+tasks that start together always report the same elapsed, so elapsed is
+useless for separating a live run from a hung one. What separated them
+was an output-file mtime.
+
+**Why the existing rules miss it.** Step 1b was written around the
+asymmetry "a delayed success is merely late, but a handed-over job that
+fails produces no signal at all". This is a third case with no signal:
+the job SUCCEEDED, said so, and is still counted as in flight by the
+scheduler. A reader who trusts the marker calls it done and never looks
+at the node; a reader who trusts sacct calls it in flight and waits for
+output that was written yesterday. Both are wrong in a way that costs
+compute rather than correctness, which is why nothing complains.
+
+**Suggested wording for canon/session-startup.md step 1b**, after the
+sacct one-liner: "For every task the paste reports as RUNNING, check one
+output file's mtime before believing it. A task whose run directory has
+not been written to in hours, and whose .out already carries the run's
+completion marker, is a hung step -- hand Erik a `scancel` for it. Do not
+infer state from elapsed time: array tasks that start together report the
+same elapsed whether they are working or wedged."
+
+---
+
+## 2026-08-27-1100-slab-stress-vacuum-dilution
+
+**status: merged** -- 2026-08-29 designer pass (session 2026-08-29-1442-designer-inbox-merge).
+
+**Designer review.** MERGED into `preferences.md` as its own section, "Stress
+in a cell containing vacuum", placed immediately after the concentration
+convention as proposed -- same class, wrong denominator. The self-validating
+argument was kept, because it is what makes this a rule rather than a note.
+Cross-linked to L47, which came out of the same thread and the same figure.
+
+*Filed by pilot session 2026-08-27-0915-hydride-cycle-continue.*
+
+**Proposed home:** `canon/preferences.md`, near the concentration convention;
+it is the same class of error (a reported number whose denominator is wrong).
+
+**Rule.** In any cell containing vacuum -- slabs, films, free surfaces, wires --
+the stress LAMMPS reports is the virial divided by the WHOLE CELL volume and is
+diluted by the empty space. Every stress quoted from such a cell is corrected to
+the material volume, the correction factor is stated where it is used, and the
+uncorrected value is kept alongside it in the summary file so the two can never
+be confused.
+
+**Where it bit.** ni-h-hydride-cycle-eam thread 02: a 120 a0 slab in a 477.48 A
+box, f = lz_cell/lz_slab = 1.1250. Uncorrected, the biaxial modulus reads
+168.2 GPa and disagrees with C11 + C12 - 2 C12^2/C11 ~ 202 GPa by 17 %, which
+looks like a physics problem. Corrected it is 196.4 GPa and the geometry
+validates itself. Every stress in the thread was understated by 11 %.
+
+**Why it is a rule and not a note.** The check is nearly free and it is
+self-validating: for a cubic metal the corrected biaxial modulus must match the
+elastic-constant combination, so getting the correction right also confirms the
+slab, the strain definition and the sign convention in one comparison. A thread
+that skips it has no such check.
+
+---
+
+## 2026-08-27-1105-yield-is-the-stress-maximum-not-a-tolerance
+
+**status: merged** -- 2026-08-29 designer pass (session 2026-08-29-1442-designer-inbox-merge).
+
+**Designer review.** MERGED as **L47**, with the corollary ("look at the figure
+before quoting the number it was made from") kept in the lesson rather than
+scattered, and a pointer added from `preferences.md`. The nonlinear-elasticity
+mechanism is the reusable half: a fixed tolerance against a tangent line fires
+on elastic softening in ANY material with visible nonlinearity at a few percent
+strain, so the rule is not Ni-specific.
+
+*Filed by pilot session 2026-08-27-0915-hydride-cycle-continue.*
+
+**Proposed home:** `canon/lessons.md` (analysis lesson).
+
+**Rule.** In a defect-free cell loaded to nucleation, the onset of plasticity is
+the stress MAXIMUM followed by a load drop -- never "the strain at which the
+curve leaves the linear fit by more than TOL". Report sigma_max, the strain at
+it, and the magnitude of the drop. If a deviation-from-linearity number is
+reported at all, it is labelled as elastic softening, not as yield.
+
+**Where it bit.** ni-h-hydride-cycle-eam thread 02: a 0.05 GPa deviation
+tolerance reported "first plasticity at eps = 1.15 %, sigma = 2.38 GPa". The
+actual nucleation is at eps = 5.25 %, sigma = 6.22 GPa, with a 5.74 GPa drop --
+wrong by 4.6x in strain and 2.6x in stress. What the tolerance had found was the
+nonlinear elasticity of nickel: at several percent strain the moduli soften
+visibly, and any fixed tolerance against a tangent line fires on that first.
+The error is not conservative and it is not obvious from the number alone; it
+was caught only by looking at the plotted curve.
+
+**Corollary, worth its own line.** Look at the figure before quoting the number
+it was made from. Both errors in this thread survived the summary file and died
+on first sight of the plot.
+
+---
+
+## 2026-08-27-1110-do-not-scan-multi-GB-files-through-the-mount
+
+**status: merged** -- 2026-08-29 designer pass (session 2026-08-29-1442-designer-inbox-merge).
+
+**Designer review.** MERGED into `learnings.md` "Cluster discipline" as filed.
+It sits with the other mount bullets deliberately: the observed symptom (two
+following calls fail, mount looks dead) is the same symptom the mount-failure
+classification bullet teaches you to diagnose, and a session that reads one
+without the other will misclassify its own timeout as an L15 stale view.
+
+*Filed by pilot session 2026-08-27-0915-hydride-cycle-continue.*
+
+**Proposed home:** `canon/learnings.md`, "Cluster discipline".
+
+**Rule.** Never run a whole-file scan (`grep -c`, `wc -l`, a checksum) over a
+multi-GB cluster file through the sshfs mount. The device shell has a ~45 s
+cap; the call times out, and it can leave the shell briefly unresponsive so the
+NEXT calls fail too and look like a dead mount. Get frame counts and offsets
+from the submit script's `-var` block and the log's stage markers -- both are
+kilobytes and both are authoritative. `head`/`tail` on a large file are fine;
+anything that must touch every byte belongs in a cluster-side job.
+
+**Where it bit.** 2026-08-27, `grep -c "^ITEM: TIMESTEP"` over the 23.5 GB
+thread-02 trajectory: timed out, then two following `device_bash` calls failed
+before the shell recovered. The frame count (~152) was then derived in one
+second from `-var S0 50000 -var S1 705700 ... -var DUMP_RAMP_EVERY 10000`.
+
+---
+
+## 2026-08-27-1115-mc-region-load-imbalance-is-a-walltime-term
+
+**status: merged** -- 2026-08-29 designer pass (session 2026-08-29-1442-designer-inbox-merge).
+
+**Designer review.** MERGED into `learnings.md` "Cluster discipline", directly
+after "walltime before ranks" as proposed. Generalised one step in the wording:
+this is a property of any spatially restricted per-rank workload, not only of
+`fix mc/sites`, so the rule says "a restricted MC region", not "a dome".
+
+*Filed by pilot session 2026-08-27-0915-hydride-cycle-continue.*
+
+**Proposed home:** `canon/learnings.md`, near the walltime-before-ranks rule.
+
+**Rule.** A spatially RESTRICTED Monte Carlo region does not make a run cheaper
+in proportion to the catalogue. Trial insertions land on the ranks that own the
+region, so a small region concentrates the Monte Carlo cost on few ranks while
+the rest idle. Size the walltime from the probe's measured steps/s, never from
+the ratio of catalogue sizes, and say so in the thread when the two disagree.
+
+**Where it bit.** ni-h-hydride-cycle-eam thread 04 (dome, sphere of R = 10.57 a0,
+~14,500 Ni vs 201,600 in thread 03 -- a 14x smaller catalogue). Its thread note
+predicted "well under the cap". The probe measured 37.0-49.4 steps/s against
+thread 03's 56.8-58.3 -- the dome is 20-35 % SLOWER per step, giving a 65-84 h
+projection where 14x cheaper had been assumed.
+
+---
+
+## 2026-08-27-1400-probe-overrides-can-silence-a-gate
+
+**status: merged** -- 2026-08-29 designer pass (session 2026-08-29-1442-designer-inbox-merge).
+
+**Designer review.** MERGED into `learnings.md` "Cluster discipline",
+immediately after the probe-before-production block and before the probe
+exemption -- a reader who has just been told to shorten a run needs this on the
+next line. Strongest of the batch: it is a defect in the framework's own main
+mechanism, and the gate reported `0.0000`, a plausible number, not an error.
+The actionable half is the last sentence, so it was kept as the rule's
+imperative: gate the probe on the highest-cadence stream and print the ROW
+COUNT, never a tail. NOTE FOR THE OWNING PILOT (not a designer action): run 00's
+probe submit, now under ni-h-phase-diagram-eam-meam run 15, carries the same
+defect.
+
+*Filed by pilot session 2026-08-27-0915-hydride-cycle-continue.*
+
+**Proposed home:** `canon/learnings.md`, "Cluster discipline", next to
+"probe before production".
+
+**Rule.** When a probe shortens a run by overriding step counts, every gate
+must be re-checked against the SHORTENED run, not just against the production
+one. A gate that reads a block-averaged output is the classic casualty: block
+averaging has a period (`Nfreq`), and a probe short enough to finish before
+the first complete window produces a file with headers and no data. The gate
+then reports zeros while the job exits clean, `JOB DONE` and all. Gate a probe
+on the highest-cadence stream it writes -- the per-block trace -- and print the
+row COUNT, never just a tail, so an empty file is visible as emptiness rather
+than as a zero value.
+
+**Where it bit.** ni-h-hydride-cycle-eam thread 05, runs 01 and 02, probes
+22733979 and 22733980 (2026-08-27). Both passed every real gate -- empty
+`.err`, `ALL PHASES COMPLETE` twice, `JOB DONE`, healthy trace, correct
+`N_Ni` -- while the gate block printed `x = 0.0000  a_eff = 0.0000 A`.
+
+Mechanism: `fix AVE` is defined AFTER the equilibration run with
+`Nevery 20 Nrepeat 200 Nfreq 4000`. Under the probe overrides
+(`-var equil 400 -var sample 4000`) the run ends at step 4400. The window for
+step 4000 samples back to step 20, before the fix existed, so LAMMPS skips it;
+the next window at step 8000 is past the end. The file therefore holds ZERO
+data rows in ANY probe of this family. Production is unaffected -- `equil 8000`
+puts the first row at step 12000, exactly as run 00 shows.
+
+**Why it deserves a rule.** The failure is silent in the dangerous direction:
+`0.0000` is a plausible-looking number, not an error, and the honest reading
+("this gate cannot fire here") is only available to someone who works out the
+averaging arithmetic. A gate that cannot fail is worse than no gate, because
+it is counted as passed. Fixed in runs 01 and 02; run 00's probe submit
+(now under ni-h-phase-diagram-eam-meam run 15, other-session scope) carries
+the same defect and should be fixed by whoever owns it.
+
+---
+
+## 2026-08-28-1610-sacct-state-can-lie-for-an-unreaped-job
+
+**status: merged** -- 2026-08-29 designer pass (session 2026-08-29-1442-designer-inbox-merge).
+
+**Designer review.** MERGED, jointly with 2026-08-27-0905 -- see that
+proposal's review note for why they could not be merged separately. Everything
+substantive from here survives: the accounting-record mechanism, the two tells
+(Elapsed exceeding the job's own cap; the run dir finished hours or days
+earlier), `squeue` as the arbiter over `sacct`, and the explicit prohibition on
+letting an `sacct` row overturn another session's correct hand-over record.
+That last clause is the reason this is canon and not a lesson: the cost was not
+compute, it was un-doing a good hand-over.
+Confirmed live in Erik's 2026-08-29T14:5xZ paste, which still shows 22730595_2
+`RUNNING` at 3-04:43:56 against a 24 h cap -- three days after the job ceased
+to exist.
+
+*Filed by pilot session 2026-08-28-1558-nih-at-dislocs-readout.*
+
+**Proposed home:** `canon/learnings.md`, "Cluster discipline", next to the
+step-1b reconciliation rule -- and step 1b itself should name the check.
+
+**Rule.** `sacct` reports the ACCOUNTING record, which is written when a job's
+epilog completes. A job whose job step hung at exit may never get that record
+closed: `sacct` then goes on printing `RUNNING` with `End = Unknown` and an
+Elapsed that keeps climbing past the walltime cap, for a job the controller
+has already forgotten. Treat an `sacct` row as authoritative for jobs that
+ENDED CLEANLY only. Before acting on a job `sacct` calls live -- above all
+before telling anyone it is burning cores -- confirm against `squeue`, which
+reflects the controller rather than the database. Two tells that an `sacct`
+`RUNNING` row is an accounting artefact rather than a live job: Elapsed
+EXCEEDS the job's own `--time` cap (Slurm would have enforced it), and the
+run dir shows the science finished with its full gate block hours or days
+earlier.
+
+**Where it bit.** ni-h-hydride-cycle-eam thread 05 run 00, array task
+22730595_2 (mu = -2.45). Its science finished 2026-08-26T13:49Z with `JOB DONE`
+and every output on disk; the `lmp` srun step never reaped. Erik cancelled it
+2026-08-27T11:4xZ and the owning session recorded the loop closed -- correctly.
+An `sacct -S 2026-08-25` paste on 2026-08-28 still showed it `RUNNING` at
+2-06:04:10 against a 24 h cap. THIS session read that as ground truth,
+concluded the earlier record was wrong, and told Erik the job had been holding
+16 cores on s.cmmg for ~54 h. `scancel -s KILL 22730595_2` answered
+`Invalid job id specified`: the job had not existed for a day. The elapsed
+time being more than twice the cap was visible in the same paste and should
+have been the tell.
+
+**Why it deserves a rule.** Step 1b exists to make `sacct` the reconciliation
+instrument, so this failure mode sits directly on the framework's main path.
+It also fails in the expensive direction for trust: it manufactures a false
+alarm about wasted cluster time AND contradicts a correct record written by
+another session, which is exactly the way a good hand-over gets un-done.
+
+---
+
+## 2026-08-28-1650-fix-the-class-not-the-instance-minimum-image
+
+**status: merged** -- 2026-08-29 designer pass (session 2026-08-29-1442-designer-inbox-merge).
+
+**Designer review.** MERGED into `learnings.md` "Workflow rules", with one
+correction to the proposal: the "fix the class, not the instance" line it names
+as its neighbour **does not exist in learnings.md**. The phrase lives in
+ARCHITECTURE.md, in the packaged skill's §6, and in three lint-script headers --
+nowhere in canon prose. So this proposal did not amend an existing rule; it
+CREATED the learnings.md entry the phrase has been pointing at all along, with
+the minimum-image case as its worked example. Filed under Workflow rules rather
+than Process because it governs how a fix is finished, not how files move.
+
+*Filed by pilot session 2026-08-28-1558-nih-at-dislocs-readout.*
+
+**Proposed home:** `canon/learnings.md`, near the "fix the class, not the
+instance" line in the pilot rules -- this is the worked example that line
+has been missing.
+
+**Rule.** When a defect is found in one script, GREP THE THREAD (and its
+sibling threads) for every other script that computes the same quantity,
+and fix or explicitly clear each one in the same session. Record which
+files were checked, not just which were changed. A defect that was found,
+understood, written up and fixed in ONE file is the easiest kind to meet
+again, because the write-up reads as if the class were handled.
+
+**The specific quantity, since it recurs here:** any distance from a
+dislocation line, or any "far field" test, in a PERIODIC cell must use the
+minimum image. It is invisible whenever the line happens to sit near the
+box centre, which is exactly the configuration such code gets written and
+tested on.
+
+**Where it bit.** ni-h-at-dislocs-eam-meam. On 2026-08-24 the missing
+minimum image was found in `select-relaxation-subset.py`, fixed, verified
+against d90 (bit-identical selection), and written up in BOTH thread 04 and
+thread 05 thread.md under "Three ways this is NOT d90". The sibling script
+`export-Hbindmap-for-ovito.py`, in the same project, computing the same
+`r` from the same line, was not looked at. It was still naive on
+2026-08-28 when the d0 map was finally analysed: d0's line sits at
+x = 144.0 in lx = 250.33, so **7.6 % of all 956760 sites** were being
+assigned the long way round the box -- including part of the far-field
+population that DEFINES the background. Caught only because the new
+session printed the naive and minimum-image maxima side by side.
+
+**Why it deserves a rule.** The 08-24 write-up is good: it names the
+defect, gives the verification, and appears in two thread files. It is also
+exactly what made the second instance easy to miss -- a reader of either
+thread.md would conclude the minimum image had been dealt with in this
+project. The cheap guard is a grep at fix time, and a line in the write-up
+saying which other files were checked and cleared.
+
+---
+
+## 2026-08-28-1830-score-minimizers-in-force-evaluations
+
+**status: merged** -- 2026-08-29 designer pass (session 2026-08-29-1442-designer-inbox-merge).
+
+**Designer review.** MERGED into `learnings.md` "Cluster discipline", beside
+the walltime rules, as proposed -- same shape as L26. Kept in full, including
+the measured table and the `min_modify norm` / `hftn` caveat, because the
+numbers ARE the rule: without them the ranking is just an opinion, and the
+proposal's own point is that the opinion was wrong. Not promoted to a lessons.md
+L-number: it is a measurement-and-method rule for a whole class of runs, not a
+LAMMPS trap that bites an input, which is what the L-queue is for.
+The self-report -- the session argued from condition numbers, predicted FIRE
+would lose, and was wrong -- was kept in the first person. It is the part that
+makes the rule stick.
+
+*Filed by pilot session 2026-08-28-1558-nih-at-dislocs-readout.*
+
+**Proposed home:** `canon/learnings.md`, near the L26 walltime rule -- it is
+the same shape (measure the thing that costs, do not extrapolate a proxy).
+
+**Rule.** When choosing or comparing a `min_style`, score **force
+evaluations and wall time**, never iterations. LAMMPS iterations are not
+commensurable across styles: `cg` and `sd` spend 2-3 force evaluations per
+iteration in their line search, `fire` and `quickmin` about 1, and `hftn`
+spends O(100) in its inner CG loop. The count is printed as
+`Iterations, force evaluations = N M` at the end of every `minimize` and
+that is the only place the evaluation number exists -- it is not available
+as an equal-style variable, so a harvest must parse the log.
+
+Two companion rules, both of which the same run exercised:
+
+- **Give every arm the same EVALUATION budget**, not the same iteration
+  budget: `minimize etol ftol <large maxiter> <equal maxeval>`. Capping
+  iterations equally hands the line-search styles a factor 2-3 they have
+  not earned.
+- **Check that every arm actually stopped at the same force norm before
+  ranking anything.** `min_modify norm` is settable for `cg`, `sd`,
+  `quickmin` and `fire` but NOT for `hftn`, which ignores `min_modify`
+  entirely. Record the converged `fnorm` per site per arm and refuse to
+  print a cost table if they differ.
+
+**Where it was measured.** ni-h-at-dislocs-eam-meam thread 04, job 22736776
+(2026-08-28), five arms x the same 20 sites: one H inserted into a 570720-atom
+cell already relaxed to fnorm/dof ~1e-8, minimized to 1e-7 per dof.
+Force evaluations, relative to `fire`: **fire+abcfire 0.92, fire 1.00,
+cg 1.71, hftn 2.52, quickmin 20.25.** All five agreed on the energies to
+0.001 meV. Scored on ITERATIONS instead, the same run would have ranked
+`hftn` first by a factor of 71 (112 iterations against fire's 7957) and
+`cg` ahead of `fire` -- both conclusions exactly backwards.
+
+**And the reason it is a rule and not a note.** The session ARGUED, in
+detail and from the structure of the problem, that a near-quadratic basin
+entered close to its minimum should favour `cg` or `hftn` over damped
+dynamics, and predicted FIRE would lose. FIRE won. `cg` turned out to need
+the same iteration count as FIRE rather than fewer, so its line search was
+pure overhead; `hftn` converged in 3-4 Newton steps per site exactly as
+advertised and still lost 2.5x on the constant. The argument was not
+foolish and it was still wrong, which is the case a rule has to cover: a
+one-hour five-node bake-off settles this class of question and reasoning
+about condition numbers does not. Probe before production already covers
+correctness; this covers COST.
+
+---
+
+## 2026-08-28-1835-lammps-log-echoes-the-command-before-its-output
+
+**status: merged** -- 2026-08-29 designer pass (session 2026-08-29-1442-designer-inbox-merge).
+
+**Designer review.** MERGED as **L48** plus `style/lammps.md` **1.20**,
+following the standing convention that style imports the rule by reference
+rather than duplicating the prose. Filed as read-and-confirm, not a hard gate:
+the harvest scripts live outside the `.in`, so `lint-lammps-input.sh` cannot
+see them. The dangerous case named in the proposal -- a command whose text
+happens to parse -- is carried into both entries, since the loud `ValueError`
+is the one that needs no rule.
+
+*Filed by pilot session 2026-08-28-1558-nih-at-dislocs-readout.*
+
+**Proposed home:** `canon/style/lammps.md` section 1 pre-flight, as a check
+on any script that harvests a value out of a `.log`.
+
+**Rule.** LAMMPS writes each input command to the log VERBATIM, before the
+output that command produces. So a regex harvesting a printed quantity
+matches the **command text** first, complete with its unevaluated
+`$(...)`, and only later the number. Any log-parsing harvest must take the
+first match that parses as the expected type, or anchor past the echo --
+never `re.search(...)` and trust it.
+
+**Where it bit.** ni-h-at-dislocs-eam-meam thread 04, 2026-08-28. The
+bake-off harvest read the convergence tolerance with
+`re.search(r"ftol_loose_global_eV_per_A = (\S+)", log)` and got the string
+`$(v_FTOL_LOOSE:%.6e)` from the echoed `print` command. It failed loudly
+here (`ValueError` on `float()`), which is the lucky case. The dangerous
+version of the same bug is a quantity whose command text happens to parse
+-- a hardcoded literal in the command, say -- where the harvest returns a
+plausible wrong number and nothing raises.
+
+---
+
+## 2026-08-28-1910-test-the-composition-not-the-piece
+
+**status: merged** -- 2026-08-29 designer pass (session 2026-08-29-1442-designer-inbox-merge).
+
+**Designer review.** MERGED into `learnings.md` "Cluster discipline", next to
+probe-before-production as proposed -- it is the pre-flight analogue for driver
+scripts, and it belongs where a session goes looking before a hand-over. The
+closing observation was promoted into the rule rather than left as an aside:
+where a driver can choose its sample points, choose the ones the upstream data
+actually HAS. That is the fix that removed the interpolation entirely, and it
+generalises further than the guard it tripped.
+
+*Filed by pilot session 2026-08-28-1558-nih-at-dislocs-readout.*
+
+**Proposed home:** `canon/learnings.md`, beside "probe before production" --
+this is the pre-flight analogue for driver scripts that FEED an existing
+validated script.
+
+**Rule.** When a new driver computes inputs for an existing script, testing
+the driver's arithmetic against the same data files is NOT a test of the
+pipeline. The existing script has its own admissibility guards, and they are
+usually STRICTER than the new code's, because they were written against
+failures the new code has never seen. Before hand-over, run the values the
+driver will actually produce through the CALLEE's own entry points -- import
+its parser and its input-validation function and call them on the real list.
+It costs seconds and it tests the join, which is where the defect lives.
+
+**Where it bit.** ni-h-at-dislocs-eam-meam thread 02, job 22736814
+(2026-08-28). A new driver computed a(300 K, mu) for a six-point mu bracket
+and handed each mu to the validated run-01 pre-fill script. The driver's
+a(mu) block was tested locally against the real isotherm and handled every
+point, including mu = -2.45, by flooring x at 1e-12 before a log
+interpolation. That flooring is CORRECT for a lattice constant -- a(mu)
+there equals a0(300 K) to nine decimals -- and WRONG for a fill probability.
+The pre-fill's own `x_of_mu` refuses that mu outright: "brackets a tabulated
+x = 0 point; log interpolation is undefined. Use a tabulated mu." The job
+died on its first point.
+
+The guard did its job perfectly and the cost was one queue slot: everything
+downstream had already passed on the same run (catalogue/map join 953534
+rows 0 mismatches, class fractions exact to 0.00 %, background step
+-24.330 meV against a measured -24.323 with a 0.500 meV tolerance, 507058
+fill sites, 568606 Ni carried verbatim). But nothing about the test that was
+run could have caught it, because the test never touched the callee.
+
+**The fix that came out of it is worth stating too:** the corrected bracket
+uses the isotherm's OWN tabulated mu (0.03 eV spacing) rather than a round
+0.04 grid, so both x(mu) and a(mu) come straight from measured rows and
+nothing is interpolated anywhere in the pre-fill path. Where a driver can
+choose its sample points, choosing the ones the upstream data actually has
+beats interpolating onto a tidier grid.

@@ -1385,3 +1385,94 @@ lifetimes; this gate simulates the one lifetime interaction (thermo) that
 is mechanically decidable.
 
 **Target:** every LAMMPS input with staged teardowns; the style walk.
+
+## L46 -- a gate's reference must be the same quantity, and its denominator must be stated
+
+**Rule:** two failures of the same gate, both measured 2026-08-26 in
+ni-h-at-dislocs-eam-meam thread 02 run 01, hours apart.
+
+(a) **Reference.** A gate's reference value must be the SAME QUANTITY the gate
+computes, located in the source data before use -- region, averaging window and
+definition confirmed, and the location recorded in the gate's comment. A number
+quoted in prose is a pointer to a measurement, not the measurement. Diagnostic:
+a gate that passes at a large fraction of its own tolerance has failed to
+investigate; a correct gate on correct data passes by orders of magnitude,
+because it compares a thing to itself.
+
+(b) **Denominator.** A gate that quantifies a population must state the
+denominator it covers. "N of the layers are fine" is not a gate until it says N
+of how many. Any object the computation touches but the gate does not count is
+the bug -- a silent fallback (`dict.get` with a default, a clamp, an
+`except: pass`) is invisible to every gate that inspects only the objects that
+took the normal path.
+
+**Where it bit:** (a) GATE 4 required the recomputed far-field background to
+reproduce thread 01's measured rigid strain step, -24.32 meV. It computed the
+step between the EXTREME (111) planes of the +-70 A map zone, got -27.37 meV,
+and passed a 4 meV tolerance by 3.05 meV. The background was in fact exact --
+plane by plane it agreed with thread 01's published per-site map to 0.0005 meV
+over all 99 octahedral z-planes. The two values thread 01 quoted as its
+far-field pair sat at z = 76.0 and z = 180.0 A, ~50 and ~53 A from the glide
+plane (about one decay length lambda = 53 A), NOT at the +-68.5 A zone edges.
+Two different quantities, differing by exactly what the loose tolerance
+absorbed. Evaluated at the planes the reference was measured at, the gate
+agrees to 0.007 meV and its tolerance drops from 4 meV to 0.5 meV.
+(b) The same run looked its background up BY BIN with a silent fallback. GATE 3
+asked "does every background LAYER have enough far-field sites for a median"
+and truthfully answered yes -- for the 69 layers that HAD any. It could not see
+the 30 bins that had NONE, because those never entered the background dict to
+be counted. 13.1 % of octahedral sites got a background wrong by a mean of
+13.6 meV and up to 27.2 meV, concentrated on exactly the near-core sites the
+thread is about, with all seven gates green. What caught it was not a gate: it
+was noticing that 99 z-bins in the output profile and 69 background layers in
+the gate describe the same thing and disagree.
+
+Cost in both cases: nothing, because both were investigated before the
+production submission. That is the point.
+
+**Target:** every gate block. `learnings.md`, "A gate is a mechanism, not a
+sign". Not lintable -- it is a review step on the probe-gate checklist.
+
+## L47 -- yield is the stress maximum, not a deviation from a tangent line
+
+**Rule:** in a defect-free cell loaded to nucleation, the onset of plasticity is
+the stress MAXIMUM followed by a load drop -- never "the strain at which the
+curve leaves the linear fit by more than TOL". Report sigma_max, the strain at
+it, and the magnitude of the drop. A deviation-from-linearity number, if
+reported at all, is labelled elastic softening, not yield.
+
+**Where it bit:** 2026-08-27, ni-h-hydride-cycle-eam thread 02. A 0.05 GPa
+deviation tolerance reported "first plasticity at eps = 1.15 %, sigma =
+2.38 GPa". The actual nucleation is at eps = 5.25 %, sigma = 6.22 GPa with a
+5.74 GPa drop -- wrong by 4.6x in strain and 2.6x in stress. What the tolerance
+found was the nonlinear elasticity of nickel: at several percent strain the
+moduli soften visibly and any fixed tolerance against a tangent line fires on
+that first. The error is not conservative and it is not visible in the number.
+
+**Corollary, worth its own line:** look at the FIGURE before quoting the number
+it was made from. Both errors in that thread (this one and the vacuum-diluted
+stress, `preferences.md` "Stress in a cell containing vacuum") survived the
+summary file and died on first sight of the plot.
+
+**Target:** any loading curve; the harvest step of a mechanical-test thread.
+
+## L48 -- LAMMPS echoes each command to the log before that command's output
+
+**Rule:** LAMMPS writes every input command into the log VERBATIM, ahead of the
+output it produces. A regex harvesting a printed quantity therefore matches the
+COMMAND TEXT first, complete with its unevaluated `$(...)`, and only later the
+number. Any log-parsing harvest takes the first match that parses as the
+expected type, or anchors past the echo -- never a bare `re.search(...)` whose
+result is trusted.
+
+**Where it bit:** 2026-08-28, ni-h-at-dislocs-eam-meam thread 04. The
+minimizer bake-off harvest read its convergence tolerance with
+`re.search(r"ftol_loose_global_eV_per_A = (\S+)", log)` and got the string
+`$(v_FTOL_LOOSE:%.6e)` from the echoed `print` command. It failed loudly
+(`ValueError` on `float()`), which is the lucky case: the dangerous version is
+a quantity whose command text happens to parse -- a hardcoded literal in the
+command, say -- where the harvest returns a plausible wrong number and nothing
+raises.
+
+**Target:** every `.log`-parsing harvest script. `style/lammps.md` 1.20.
+

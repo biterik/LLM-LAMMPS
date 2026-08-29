@@ -73,6 +73,26 @@ new entries, Erik confirms.
   the pilot wrote a false "something is reverting this file" warning into
   SESSIONS.md and a re-entry brief before checking the listing.)
 
+- **Fix the class, not the instance -- and record which files you cleared.**
+  When a defect is found in one script, GREP THE THREAD and its sibling
+  threads for every other script computing the same quantity, and fix or
+  explicitly clear each one in the same session. Write down which files were
+  CHECKED, not only which were changed. A defect that was found, understood,
+  written up and fixed in ONE file is the easiest kind to meet again, because
+  the write-up reads as if the class had been handled.
+  **The recurring instance worth naming:** any distance from a dislocation
+  line, and any "far field" test, in a periodic cell must use the minimum
+  image. It is invisible whenever the line sits near the box centre -- which
+  is exactly the configuration such code gets written and tested on.
+  (2026-08-24, ni-h-at-dislocs-eam-meam: the missing minimum image was found
+  in `select-relaxation-subset.py`, fixed, verified against d90 and written up
+  in two thread.md files. The sibling `export-Hbindmap-for-ovito.py`, same
+  project, same `r` from the same line, was never looked at; on 2026-08-28 it
+  was still naive and, with d0's line at x = 144.0 in lx = 250.33, was sending
+  7.6 % of 956760 sites the long way round the box -- including part of the
+  far-field population that DEFINES the background. Caught only because a new
+  session printed the naive and minimum-image maxima side by side.)
+
 - **A gate is a mechanism, not a sign and not a marker.** A probe observable
   moving in the EXPECTED direction is not a passed gate until the mechanism is
   checked: ask WHERE the signal comes from spatially, and whether the dynamics
@@ -88,6 +108,28 @@ new entries, Erik confirms.
     ALL PHASES COMPLETE, an empty `.err` and a full set of `Performance:`
     lines are necessary and nowhere near sufficient. Every probe needs at
     least one gate that a physically wrong run would FAIL.
+  - **A gate's REFERENCE must be the same quantity the gate COMPUTES.** A gate
+    whose reference is a different quantity is not a weak gate -- it is a gate
+    that reports on nothing, in green. When the reference is a value quoted
+    from another thread, LOCATE it in the source data before using it: confirm
+    the region, the averaging window and the definition it was measured under,
+    and record that location in the gate's own comment. A number quoted in
+    prose ("the far-field value", "the bulk step") is a pointer to a
+    measurement, not the measurement. State in the gate's output what was
+    measured, where, and what it is compared against.
+  - **A near-miss is a failure to investigate, not a pass.** If a gate passes
+    at a large fraction of its own tolerance, stop and find out why. A correct
+    gate on correct data usually passes by orders of magnitude, because it is
+    comparing a thing to itself. Tolerances are set tight enough that the gate
+    COULD fail.
+  - **A gate that quantifies a population must state its DENOMINATOR.** "N of
+    the layers are fine" is not a gate until it says N of how many. Any object
+    the computation touches but the gate does not count is the bug: a silent
+    fallback -- `dict.get` with a default, a clamp, an `except: pass` -- is
+    invisible to every gate that only inspects the objects that took the
+    normal path.
+
+  Both clauses are L46, measured the same day in the same thread.
 
   Where it bit: 2026-08-25, ni-melting-point-eam thread 01. The measure probe
   at 1450 K showed fcc rising in the liquid region -- the desired
@@ -260,6 +302,44 @@ lesson:
   reintroduce those bugs. The probe doubles as the L26
   walltime-calibration source -- one job, two purposes.
 
+- **A probe override can silence a gate; re-check every gate against the
+  SHORTENED run.** When a probe shortens a run by overriding step counts, the
+  gates must be re-verified against the probe's own arithmetic, not only
+  against production. A gate reading a block-averaged output is the classic
+  casualty: block averaging has a period (`Nfreq`), and a probe that finishes
+  before the first complete window produces a file with headers and no data.
+  The gate then reports zeros while the job exits clean with `JOB DONE`. Gate
+  a probe on the highest-cadence stream it writes -- the per-block trace --
+  and print the ROW COUNT, never just a tail, so an empty file is visible as
+  emptiness rather than as a zero value. A gate that cannot fail is worse than
+  no gate, because it is counted as passed. (2026-08-27,
+  ni-h-hydride-cycle-eam thread 05 runs 01/02, probes 22733979/22733980: every
+  real gate passed while the gate block printed `x = 0.0000  a_eff = 0.0000
+  A`. `fix AVE` was defined after the equilibration run with `Nevery 20
+  Nrepeat 200 Nfreq 4000`; under `-var equil 400 -var sample 4000` the run
+  ends at step 4400, the step-4000 window samples back to step 20 -- before
+  the fix existed, so LAMMPS skips it -- and the next window at step 8000 is
+  past the end. ZERO data rows in ANY probe of that family; production, with
+  `equil 8000`, is unaffected.)
+
+- **Test the composition, not the piece.** When a new driver computes inputs
+  for an existing validated script, testing the driver's arithmetic against
+  the same data files is NOT a test of the pipeline. The callee has its own
+  admissibility guards, usually STRICTER than the new code's because they were
+  written against failures the new code has never seen. Before hand-over, run
+  the values the driver will actually produce through the CALLEE's own entry
+  points -- import its parser and its input-validation function and call them
+  on the real list. It costs seconds and it tests the join, which is where the
+  defect lives. (2026-08-28, ni-h-at-dislocs-eam-meam thread 02, job 22736814:
+  a driver floored x at 1e-12 before a log interpolation -- correct for a
+  lattice constant, where a(mu = -2.45) equals a0(300 K) to nine decimals, and
+  wrong for a fill probability. The pre-fill's own `x_of_mu` refuses that mu
+  outright; the job died on its first point, with everything else on the run
+  already passing. Corollary that came out of it: where a driver can choose
+  its sample points, choose the ones the upstream data actually HAS -- the
+  corrected bracket uses the isotherm's own tabulated mu spacing, so nothing
+  is interpolated anywhere in the pre-fill path.)
+
 - **Probe exemption -- production cheaper than its own probe.** Where the
   production job is single-node, few-core and seconds long (a bulk baseline
   minimization, a capability check, a small static calculation), no separate
@@ -282,6 +362,44 @@ lesson:
   stupidly increase the overhead of communications ... I think max runtime is
   96h." Both facts were already on record; the failure was not consulting them
   at decision time.)
+
+- **A restricted MC region is not a cheaper run; it is a load-imbalanced
+  one.** Trial insertions land on the ranks that own the region, so a small
+  Monte Carlo region concentrates the MC cost on few ranks while the rest
+  idle. Size the walltime from the probe's measured steps/s, never from the
+  ratio of catalogue sizes, and say so in thread.md when the two disagree.
+  (2026-08-27, ni-h-hydride-cycle-eam thread 04: a dome of R = 10.57 a0,
+  ~14,500 Ni against thread 03's 201,600 -- a 14x smaller catalogue -- was
+  predicted "well under the cap". The probe measured 37.0-49.4 steps/s against
+  thread 03's 56.8-58.3: 20-35 % SLOWER per step, a 65-84 h projection where
+  14x cheaper had been assumed.)
+
+- **Score minimizers in FORCE EVALUATIONS and wall time, never iterations.**
+  LAMMPS iterations are not commensurable across styles: `cg` and `sd` spend
+  2-3 force evaluations per iteration in their line search, `fire` and
+  `quickmin` about 1, and `hftn` O(100) in its inner CG loop. The count exists
+  only in the `Iterations, force evaluations = N M` line at the end of every
+  `minimize` -- it is not available as an equal-style variable, so a harvest
+  must parse the log. Two companion rules:
+  - Give every arm the same EVALUATION budget (`minimize etol ftol <large
+    maxiter> <equal maxeval>`), not the same iteration budget; capping
+    iterations equally hands the line-search styles a factor 2-3.
+  - Confirm every arm stopped at the same force norm before ranking anything.
+    `min_modify norm` is settable for `cg`, `sd`, `quickmin` and `fire` but
+    NOT for `hftn`, which ignores `min_modify` entirely. Record the converged
+    `fnorm` per site per arm and refuse to print a cost table if they differ.
+
+  Measured 2026-08-28, ni-h-at-dislocs-eam-meam thread 04, job 22736776: five
+  arms x 20 sites, one H into a 570720-atom cell pre-relaxed to fnorm/dof
+  ~1e-8, minimized to 1e-7 per dof. Force evaluations relative to `fire`:
+  **fire+abcfire 0.92, fire 1.00, cg 1.71, hftn 2.52, quickmin 20.25**; all
+  five agreed on energies to 0.001 meV. Scored on ITERATIONS the same run
+  ranks `hftn` first by 71x (112 against fire's 7957) and `cg` ahead of
+  `fire` -- both backwards. The proposing session had argued from the
+  structure of the problem that a near-quadratic basin should favour `cg` or
+  `hftn` and predicted FIRE would lose; FIRE won. A one-hour bake-off settles
+  this class of question and reasoning about condition numbers does not. Same
+  shape as L26: measure the thing that costs, do not extrapolate a proxy.
 
 - **Two mount failures, opposite fixes (extends L15).** Before calling a
   cluster mount "down", classify the failure:
@@ -388,6 +506,58 @@ lesson:
   directly. (2026-08-05, ni-h-phase-diagram harvest: five of six run dirs
   mirrored, the sixth silently skipped, caught only by the file count.
   Merged 2026-08-25 from inbox 2026-08-05-1210.)
+
+- **Never scan a multi-GB cluster file through the mount.** A whole-file pass
+  -- `grep -c`, `wc -l`, a checksum -- over a multi-GB file on sshfs exceeds
+  the ~45 s device-shell cap, and the timeout can leave the shell briefly
+  unresponsive so the NEXT calls fail too and the mount looks dead. Frame
+  counts and offsets come from the submit script's `-var` block and the log's
+  stage markers: both are kilobytes and both are authoritative. `head`/`tail`
+  on a large file are fine; anything that must touch every byte belongs in a
+  cluster-side job. (2026-08-27: `grep -c "^ITEM: TIMESTEP"` over the 23.5 GB
+  hydride-cycle thread-02 trajectory timed out and wedged two following calls;
+  the count, ~152, then came in one second from `-var S0 50000 -var S1 705700
+  ... -var DUMP_RAMP_EVERY 10000`.)
+
+- **The scheduler's state and the run's own marker can disagree in BOTH
+  directions; neither alone is sufficient.** Cross-check them, and treat a
+  disagreement as a finding rather than as noise. The four cases:
+  - marker present, scheduler COMPLETED -> genuinely done.
+  - marker ABSENT, scheduler RUNNING -> genuinely running. Confirm by an
+    output mtime, not by the absence of the marker: a job that died silently
+    looks identical from the `.out` alone.
+  - marker ABSENT, scheduler COMPLETED -> the job exited without finishing.
+    This is the failure step 1b was written to catch.
+  - marker PRESENT, scheduler RUNNING -> the science is finished and
+    harvestable, and EITHER the job step is hung (cores really are being
+    burned) OR the row is an accounting artefact for a job that no longer
+    exists. **Do not act on `sacct` alone here.**
+
+  **`sacct` reports the ACCOUNTING record, written when the epilog completes.**
+  A job whose step hung at exit may never get that record closed: `sacct` goes
+  on printing `RUNNING` with `End = Unknown` and an Elapsed that climbs past
+  the walltime cap, for a job the controller has already forgotten. Two tells
+  that a `RUNNING` row is an artefact: Elapsed EXCEEDS the job's own `--time`
+  cap (Slurm would have enforced it), and the run dir shows the science
+  finished hours or days earlier. Before telling anyone a job is burning
+  cores -- and before handing over a `scancel` -- confirm against `squeue`,
+  which reflects the controller rather than the database. Never let an
+  `sacct` row overturn a correct hand-over record written by another session.
+  And do not infer state from Elapsed: array tasks that start together report
+  the same elapsed whether they are working or wedged; what separates a live
+  task from a wedged one is an output-file mtime.
+
+  (2026-08-27, array 22730595, hydride-cycle thread 05 / phase-diagram run 15,
+  24 h cap. Task 2 printed its full gate block and `JOB DONE` at
+  2026-08-26T13:49Z with a complete results dir; `sacct` on 08-27 still called
+  it RUNNING at 22:56:30 -- as it did task 9, which really was still writing
+  that minute at the identical elapsed. Erik cancelled task 2 on 08-27 and the
+  owning session closed the loop correctly. Then on 2026-08-28 an
+  `sacct -S 2026-08-25` paste STILL showed it RUNNING at 2-06:04:10 against
+  that 24 h cap; a second session read the row as ground truth, concluded the
+  earlier record was wrong, told Erik 16 cores had been held ~54 h, and got
+  `Invalid job id specified` from `scancel` -- the job had not existed for a
+  day. The elapsed being more than twice the cap was in the same paste.)
 
 - **Harvest the failure mode, not just the failure count.** For every
   task that did not complete, the harvest records: the terminating

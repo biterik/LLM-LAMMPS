@@ -419,6 +419,24 @@ stages 1-2 clean. Second submission lost to the same input; all three
 commands are individually correct, only the order is wrong. Merged
 2026-08-25, designer+pilot session, no inbox round-trip -- lock was held.)
 
+### 1.20 A log-parsing harvest must survive the command echo (L48)
+
+LAMMPS writes each input command to the log verbatim BEFORE that command's
+output, so the first regex match for a printed quantity is the command text,
+`$(...)` unevaluated. Read-and-confirm, not a hard gate -- the harvest scripts
+live outside the `.in`:
+
+```
+# every re.search / grep over a .log for a value that a `print` produced:
+# take the first match that parses as the expected type, or anchor past the
+# echo (e.g. search after the "Step " header, or use the LAST match).
+grep -n 'print .*=' <input>.in      # each of these appears twice in the log
+```
+
+The loud failure is a `ValueError` on `float()`. The dangerous one is a command
+whose text happens to parse -- a hardcoded literal in the command -- where the
+harvest returns a plausible wrong number and nothing raises.
+
 ## 2. Rules from lessons.md
 
 This section references the canonical entries in `../lessons.md`. The
@@ -447,6 +465,7 @@ context when reading inputs.
 - **L29** — `fix ave/time` title1/title2 are literal; no `${}`/`$()` substitution in headers.
 - **L30** — Standalone `print`: no bare `%` (printf-conversion trap); keep static or use `$()`/`${}` (see §1.12).
 - **L31** — `%d`/`%i`/`%x` illegal inside `$(...)` (values are doubles) in both `print` and `fix print`; use `$(step)` or a float format (see §1.12). Corrects L30's discriminator.
+- **L48** — LAMMPS echoes each command to the log before its output; a `.log` harvest must not trust a bare `re.search` (see §1.20).
 
 Remaining placeholder slots (still lost between sessions):
 **L11, L16** — see `../lessons.md` (shell-rule slots).

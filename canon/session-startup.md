@@ -153,6 +153,28 @@ scope, ask Erik to paste one line:
 sacct -X -S <earliest in_flight date> -o JobID%16,JobName%42,Partition,State,Elapsed,End,ExitCode,NNodes
 ```
 
+**Do not read the paste as ground truth for anything still open.** `sacct`
+reports the ACCOUNTING record, closed by the epilog; a job whose step hung at
+exit may never get that record closed, and the row then prints `RUNNING` with
+`End = Unknown` and an Elapsed that climbs past the job's own `--time` cap, for
+a job the controller has already forgotten. Two rules, both paid for:
+
+- **For every row the paste calls RUNNING, cross-check the run's own completion
+  marker and one output file's mtime before believing it.** Marker present +
+  `RUNNING` means the science is finished; that is either a hung step or an
+  accounting artefact, never a live calculation. Marker absent + `RUNNING` is a
+  live job -- confirm by the mtime, not by the absence of the marker, because a
+  job that died silently looks identical from the `.out` alone.
+- **Confirm against `squeue` -- which reflects the controller, not the database
+  -- before handing Erik a `scancel` or telling him cores are being burned.**
+  Elapsed exceeding the job's own cap is the tell that the row is an artefact.
+  Never let an `sacct` row overturn a correct hand-over already recorded by
+  another session. And never infer state from Elapsed: array tasks that start
+  together report the same elapsed whether they are working or wedged.
+
+See `learnings.md`, "The scheduler's state and the run's own marker can
+disagree in BOTH directions".
+
 Reconcile it against those entries and report, in the startup brief: what
 completed, what failed, and what was never submitted. Then clear the reconciled
 `in_flight` fields. This runs regardless of which scope Erik then picks — an

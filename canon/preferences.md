@@ -22,6 +22,25 @@ Pilot-maintained. Pilot proposes new entries; Erik confirms.
   as number of H / number of Ni ... keep this convention in the
   future".)
 
+## Stress in a cell containing vacuum (slabs, films, surfaces, wires)
+
+- **Correct every stress to the MATERIAL volume.** LAMMPS reports the virial
+  divided by the WHOLE CELL volume, so any cell with vacuum in it reports a
+  diluted stress. Quote the corrected value, state the correction factor
+  f = V_cell / V_material where it is used, and keep the uncorrected number
+  alongside it in the summary file so the two can never be confused. Same class
+  of error as a concentration with the wrong denominator, above.
+- **The check is nearly free and it validates itself.** For a cubic metal the
+  corrected biaxial modulus must match C11 + C12 - 2 C12^2/C11, so getting the
+  correction right also confirms the slab thickness, the strain definition and
+  the sign convention in one comparison. A thread that skips it has no such
+  check. (2026-08-27, ni-h-hydride-cycle-eam thread 02: a 120 a0 slab in a
+  477.48 A box, f = lz_cell/lz_slab = 1.1250. Uncorrected the biaxial modulus
+  reads 168.2 GPa and misses the elastic-constant combination ~202 GPa by 17 %,
+  which looks like a physics problem; corrected it is 196.4 GPa. Every stress in
+  the thread was understated by 11 %.)
+- **Yield is the stress maximum, not a tolerance** -- see L47.
+
 ## Potentials — go-to picks
 
 (stubs; fill as we observe Erik's defaults across projects)

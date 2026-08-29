@@ -65,7 +65,7 @@ ever reads canon. Full text in `ARCHITECTURE.md` §2.
    any lesson or decision worth keeping lands in its plain file the moment
    it surfaces.
 
-## 4. Two rules that have cost real jobs
+## 4. Three rules that have cost real jobs
 
 - **Probe before production.** Every new or edited LAMMPS input gets a
   short probe `sbatch` first. Verify clean exit, the "ALL PHASES COMPLETE"
@@ -76,6 +76,16 @@ ever reads canon. Full text in `ARCHITECTURE.md` §2.
   into cluster `$HOME` (tight quota — venvs, pip/conda caches, TF and
   `nvidia-cu12` wheels, model caches and build trees all belong under
   scratch). Login nodes are for building, downloading and submitting.
+- **Every submit script sends its own notification mail.** Slurm's
+  `--mail-type` mail is subject-only with an empty body and the job name
+  truncated off the right edge — it is a BACKSTOP (`FAIL,TIME_LIMIT` only),
+  not the message. Source the deployed `slurm-notify.sh` (per-cluster path in
+  `canon/clusters.yaml` → `notify.helper`) and call `lmps_notify_arm` after
+  the pre-flight checks, before the `srun`; pre-flight the helper like any
+  other input and never `source ... || true`. Full rule and skeleton:
+  `canon/style/shell.md` 6. On a cluster with no `notify:` block yet, deploy
+  the helper and verify it once with `canon/templates/slurm-notify.probe.slurm`
+  before relying on it.
 
 ## 5. Role tag
 
