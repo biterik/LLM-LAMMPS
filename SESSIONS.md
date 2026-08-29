@@ -8,112 +8,11 @@ LLM-LMPS Cowork session self-registers on startup, updates
 See ARCHITECTURE.md §17 (Concurrency model) for the rules and
 `canon/session-startup.md` for the startup ritual.
 
-last_index_updated: 2026-08-29T15:40Z   # real UTC
+last_index_updated: 2026-08-29T15:04Z   # real UTC (wrap-up)
 
 ---
 
 ## active
-
-
-### session_id: 2026-08-29-1442-designer-inbox-merge
-- mode: designer
-- scope: |
-    DESIGNER, inbox pass. Review the 12 pending proposals in
-    canon/proposals-inbox.md (1 from 08-26, 6 from 08-27, 5 from 08-28) against
-    existing canon and merge the ones that hold, flagging any to reject or
-    rewrite before writing. No project work, no cluster work, no submissions.
-- started: 2026-08-29T14:42Z
-- last_active: 2026-08-29T15:40Z
-- simulation_root: ~/Desktop/SIMULATIONS   # connected, but out of scope this session
-- machine: M5   # canon/local/.this-machine
-- cluster_identity: |
-    Not resolved -- designer scope, no cluster work. Mount
-    ~/cluster-mounts/cmmg is connected but this session does not read it.
-- designer_lock: |
-    TAKEN 2026-08-29T14:45Z. Previous holder 2026-08-20-1145-cluster-status-sweep
-    (last_active 2026-08-20T14:55Z, 9 days stale) CLOSED at Erik's instruction in
-    the same edit; see its entry in recently_closed. No other active entry claims
-    the lock -- all record "designer lock NOT taken".
-- owns_writes_to:
-  - LLM-LAMMPS-public/SESSIONS.md (this entry only)
-  - LLM-LAMMPS-public/canon/proposals-inbox.md
-  - LLM-LAMMPS-public/canon/learnings.md
-  - LLM-LAMMPS-public/canon/lessons.md
-  - LLM-LAMMPS-public/canon/preferences.md
-  - LLM-LAMMPS-public/canon/style/lammps.md
-  - LLM-LAMMPS-public/canon/session-startup.md
-  - LLM-LAMMPS-public/skills/llm-lammps/SKILL.md   # added 15:40Z, notify bullet
-- scope_collisions: |
-    None. Every other active entry is pilot mode on a project tree; this session
-    touches no project tree.
-- step_1b: |
-    DISCHARGED 2026-08-29T15:0xZ against Erik's `sacct -X -S 2026-08-20` paste.
-    CLOSED:
-    * 22344607_[0-5] / 22344608_[0-5] (run 14 size scans, the last open loop of
-      2026-08-20-1145) -- all 12 COMPLETED 2026-08-20, exit 0:0.
-    * 22730595 (mu bracket 900 K) -- tasks 0-8 COMPLETED, task 9 TIMEOUT at the
-      24 h cap as designed (L34). Array closed.
-    * 22736814 (prefill a(mu) driver) FAILED 08-28T21:04 and was re-run clean as
-      22736816 -- the incident behind inbox 2026-08-28-1910, already fixed.
-    CONFIRMS THE RULE MERGED THIS SESSION:
-    * 22730595_2 still prints RUNNING at 3-04:43:56 against its own 24 h cap,
-      three days after Erik cancelled it and the job ceased to exist. Textbook
-      accounting artefact -- NO ACTION, do not scancel, do not report burned
-      cores. See learnings.md "The scheduler's state and the run's own marker
-      can disagree in BOTH directions".
-    STILL OPEN -- NOT THIS SESSION'S SCOPE, flagged to Erik:
-    * 22733464_0 and _1 (NiH-CYC2-RATEB-EAM, thread 03 cycle rate B) BOTH FAILED
-      with ExitCode 1:0 after 1-08:49:28 and 1-07:39:05, ended 2026-08-28T22:25
-      and 21:14. Recorded as submitted-and-running by
-      2026-08-27-0915-hydride-cycle-continue; never reconciled. ~32 core-days
-      per task spent before the failure -- needs the .err read before anything
-      is resubmitted.
-    * 22733466_0 and _1 (thread 04 DOME) RUNNING at 2-03:07 and 1-23:24 against
-      a 4-day cap -- consistent with the 65-84 h projection, genuinely live.
-    * 22732087_[0-6] (nimelt-t02-measure) PENDING with 00:00:00 elapsed since
-      2026-08-26 -- three days queued, no owning entry claims it.
-    * 22736818 (NiH-MUSWEEP-D90-EAM-PROBE) FAILED 08-28T21:16 -- a probe, and
-      unrecorded; needs its .err read.
-    CORRECTION to this session's first reading of the paste: 22731708_1
-    (LMPS-notify-probe) FAILED 08-26 is BY DESIGN, not an open loop. The probe
-    is an array of two, task 1 exits 1 on purpose to exercise the FAILED mail
-    path (canon/templates/slurm-notify.probe.slurm, lines 11-13). All four
-    mails arrived with bodies; clusters.yaml records the verification.
-    ODDITY, harmless: 22730592 reports Elapsed 00:00:00 though its owning entry
-    measured 25921 s wall and the run completed cleanly. Another accounting
-    artefact of the same family; the run dir is the arbiter.
-- notify_helper_gap: |
-    Erik, 2026-08-29: the job-notification mail was designed and deployed on
-    2026-08-26 but the DOORBELL never learned about it. Canon was complete
-    (style/shell.md 6, learnings.md, clusters.yaml cmmg notify block,
-    templates/slurm-notify.sh + .probe.slurm, notify_email/notify_helper in
-    canon/local); skills/llm-lammps/SKILL.md said nothing, so a session that
-    wrote a submit script from the doorbell alone would omit it. Fixed here:
-    SKILL.md section 4 is now "Three rules that have cost real jobs".
-    STILL OPEN, not doable from a session: the INSTALLED Cowork skill is a
-    synced copy of Erik's account skill -- the repo edit does not reach a
-    session until he re-installs it. And only cmmg has a `notify:` block;
-    raven, viper-cpu and viper-gpu need deploy + probe before the rule can
-    be honoured there.
-- merged_this_session: |
-    All 12 pending proposals MERGED 2026-08-29, none rejected. 2026-08-27-0905
-    and 2026-08-28-1610 were merged JOINTLY (same job, contradictory as
-    standalone rules). New canon: learnings.md gains 6 bullets (gate corollaries;
-    fix-the-class + minimum image; probe overrides silence gates; test the
-    composition; restricted-MC load imbalance; minimizer scoring; multi-GB mount
-    scans; scheduler-vs-marker), lessons.md gains L46/L47/L48, preferences.md
-    gains "Stress in a cell containing vacuum", style/lammps.md gains 1.20,
-    session-startup.md step 1b gains the RUNNING-row verification. All three
-    linters clean. NOT COMMITTED -- left in the working tree for Erik.
-- in_flight: (none)
-- notes: |
-    STALE ACTIVE ENTRIES CLEARED 2026-08-29T15:20Z at Erik's instruction. All
-    three -- 2026-08-05-1425-mcsites-presentation,
-    2026-08-03-1401-nih-at-dislocs-design and
-    2026-08-02-1647-ingest-eam-dislocs-ni-cu -- moved to recently_closed with
-    reconciled in_flight and a summary; flagged unclosed since 2026-08-20.
-    Together with 2026-08-20-1145-cluster-status-sweep, closed earlier this
-    session, `active` now holds no entry older than 2026-08-24.
 
 
 ### session_id: 2026-08-27-0915-hydride-cycle-continue
@@ -1864,6 +1763,138 @@ last_index_updated: 2026-08-29T15:40Z   # real UTC
 
 ## recently_closed
 
+### session_id: 2026-08-29-1442-designer-inbox-merge
+- mode: designer
+- scope: |
+    DESIGNER, inbox pass. Review the 12 pending proposals in
+    canon/proposals-inbox.md (1 from 08-26, 6 from 08-27, 5 from 08-28) against
+    existing canon and merge the ones that hold, flagging any to reject or
+    rewrite before writing. No project work, no cluster work, no submissions.
+- started: 2026-08-29T14:42Z
+- last_active: 2026-08-29T15:04Z
+- simulation_root: ~/Desktop/SIMULATIONS   # connected, but out of scope this session
+- machine: M5   # canon/local/.this-machine
+- cluster_identity: |
+    Not resolved -- designer scope, no cluster work. Mount
+    ~/cluster-mounts/cmmg is connected but this session does not read it.
+- designer_lock: |
+    TAKEN 2026-08-29T14:45Z. Previous holder 2026-08-20-1145-cluster-status-sweep
+    (last_active 2026-08-20T14:55Z, 9 days stale) CLOSED at Erik's instruction in
+    the same edit; see its entry in recently_closed. No other active entry claims
+    the lock -- all record "designer lock NOT taken".
+- owns_writes_to:
+  - LLM-LAMMPS-public/SESSIONS.md (this entry only)
+  - LLM-LAMMPS-public/canon/proposals-inbox.md
+  - LLM-LAMMPS-public/canon/learnings.md
+  - LLM-LAMMPS-public/canon/lessons.md
+  - LLM-LAMMPS-public/canon/preferences.md
+  - LLM-LAMMPS-public/canon/style/lammps.md
+  - LLM-LAMMPS-public/canon/session-startup.md
+  - LLM-LAMMPS-public/skills/llm-lammps/SKILL.md   # added 15:40Z, notify bullet
+- scope_collisions: |
+    None. Every other active entry is pilot mode on a project tree; this session
+    touches no project tree.
+- step_1b: |
+    DISCHARGED 2026-08-29T15:04Z against Erik's `sacct -X -S 2026-08-20` paste.
+    CLOSED:
+    * 22344607_[0-5] / 22344608_[0-5] (run 14 size scans, the last open loop of
+      2026-08-20-1145) -- all 12 COMPLETED 2026-08-20, exit 0:0.
+    * 22730595 (mu bracket 900 K) -- tasks 0-8 COMPLETED, task 9 TIMEOUT at the
+      24 h cap as designed (L34). Array closed.
+    * 22736814 (prefill a(mu) driver) FAILED 08-28T21:04 and was re-run clean as
+      22736816 -- the incident behind inbox 2026-08-28-1910, already fixed.
+    CONFIRMS THE RULE MERGED THIS SESSION:
+    * 22730595_2 still prints RUNNING at 3-04:43:56 against its own 24 h cap,
+      three days after Erik cancelled it and the job ceased to exist. Textbook
+      accounting artefact -- NO ACTION, do not scancel, do not report burned
+      cores. See learnings.md "The scheduler's state and the run's own marker
+      can disagree in BOTH directions".
+    STILL OPEN -- NOT THIS SESSION'S SCOPE, flagged to Erik:
+    * 22733464_0 and _1 (NiH-CYC2-RATEB-EAM, thread 03 cycle rate B) BOTH FAILED
+      with ExitCode 1:0 after 1-08:49:28 and 1-07:39:05, ended 2026-08-28T22:25
+      and 21:14. Recorded as submitted-and-running by
+      2026-08-27-0915-hydride-cycle-continue; never reconciled. ~32 core-days
+      per task spent before the failure -- needs the .err read before anything
+      is resubmitted.
+    * 22733466_0 and _1 (thread 04 DOME) RUNNING at 2-03:07 and 1-23:24 against
+      a 4-day cap -- consistent with the 65-84 h projection, genuinely live.
+    * 22732087_[0-6] (nimelt-t02-measure) PENDING with 00:00:00 elapsed since
+      2026-08-26 -- three days queued, no owning entry claims it.
+    * 22736818 (NiH-MUSWEEP-D90-EAM-PROBE) FAILED 08-28T21:16 -- a probe, and
+      unrecorded; needs its .err read.
+    CORRECTION to this session's first reading of the paste: 22731708_1
+    (LMPS-notify-probe) FAILED 08-26 is BY DESIGN, not an open loop. The probe
+    is an array of two, task 1 exits 1 on purpose to exercise the FAILED mail
+    path (canon/templates/slurm-notify.probe.slurm, lines 11-13). All four
+    mails arrived with bodies; clusters.yaml records the verification.
+    ODDITY, harmless: 22730592 reports Elapsed 00:00:00 though its owning entry
+    measured 25921 s wall and the run completed cleanly. Another accounting
+    artefact of the same family; the run dir is the arbiter.
+- notify_helper_gap: |
+    Erik, 2026-08-29: the job-notification mail was designed and deployed on
+    2026-08-26 but the DOORBELL never learned about it. Canon was complete
+    (style/shell.md 6, learnings.md, clusters.yaml cmmg notify block,
+    templates/slurm-notify.sh + .probe.slurm, notify_email/notify_helper in
+    canon/local); skills/llm-lammps/SKILL.md said nothing, so a session that
+    wrote a submit script from the doorbell alone would omit it. Fixed here:
+    SKILL.md section 4 is now "Three rules that have cost real jobs".
+    STILL OPEN, not doable from a session: the INSTALLED Cowork skill is a
+    synced copy of Erik's account skill -- the repo edit does not reach a
+    session until he re-installs it. And only cmmg has a `notify:` block;
+    raven, viper-cpu and viper-gpu need deploy + probe before the rule can
+    be honoured there.
+- merged_this_session: |
+    All 12 pending proposals MERGED 2026-08-29, none rejected. 2026-08-27-0905
+    and 2026-08-28-1610 were merged JOINTLY (same job, contradictory as
+    standalone rules). New canon: learnings.md gains 6 bullets (gate corollaries;
+    fix-the-class + minimum image; probe overrides silence gates; test the
+    composition; restricted-MC load imbalance; minimizer scoring; multi-GB mount
+    scans; scheduler-vs-marker), lessons.md gains L46/L47/L48, preferences.md
+    gains "Stress in a cell containing vacuum", style/lammps.md gains 1.20,
+    session-startup.md step 1b gains the RUNNING-row verification. All three
+    linters clean. NOT COMMITTED -- left in the working tree for Erik.
+- in_flight: (none)
+- notes: |
+    STALE ACTIVE ENTRIES CLEARED 2026-08-29T15:04Z at Erik's instruction. All
+    three -- 2026-08-05-1425-mcsites-presentation,
+    2026-08-03-1401-nih-at-dislocs-design and
+    2026-08-02-1647-ingest-eam-dislocs-ni-cu -- moved to recently_closed with
+    reconciled in_flight and a summary; flagged unclosed since 2026-08-20.
+    Together with 2026-08-20-1145-cluster-status-sweep, closed earlier this
+    session, `active` now holds no entry older than 2026-08-24.
+- closed: 2026-08-29T15:04Z
+- summary: |
+    Designer inbox pass. All 12 pending proposals reviewed and MERGED, none
+    rejected; 2026-08-27-0905 and 2026-08-28-1610 merged JOINTLY because they
+    contradict each other as standalone rules. New canon: 8 bullets in
+    learnings.md, L46/L47/L48, preferences.md "Stress in a cell containing
+    vacuum", style/lammps.md 1.20 + L48 index line, session-startup.md step 1b
+    RUNNING-row verification. Step 1b DISCHARGED against Erik's sacct paste.
+    Four stale `active` entries closed with reconciled in_flight
+    (2026-08-20-1145, 2026-08-05-1425, 2026-08-03-1401, 2026-08-02-1647).
+    skills/llm-lammps/SKILL.md section 4 gained the job-notification rule.
+    in_flight: NONE for this session. Two open loops belong to OTHER entries
+    and are recorded in step_1b above -- 22733464_0/_1 FAILED unreconciled
+    (thread 03 cycle rate B, ~32 core-days each) and 22732087_[0-6] PENDING
+    since 08-26. DESIGNER LOCK RELEASED. Nothing committed: the working tree
+    carries this session's 8 modified files plus edits other sessions left
+    uncommitted; commands handed to Erik, plus `rm -f .git/index.lock` (a lock
+    this session's `git status` left behind and the bridge cannot delete).
+    TWO THINGS THIS SESSION COULD NOT FINISH:
+    (1) The re-installed Cowork skill took the proposal card's one-line
+        changelog as its DESCRIPTION instead of the trigger paragraph in the
+        repo file's frontmatter. The doorbell will no longer self-trigger on
+        "simulations"/"LAMMPS" until the description is restored by hand in
+        Customize -> Skills. Flagged to Erik at close.
+    (2) Erik declined nothing, but the ARCHITECTURE line proposed at close --
+        "a session that edits the skill re-uploads it in the same session" --
+        was offered and not taken up. The repo/installed drift it names is
+        what let the notify rule sit in canon for three days unseen.
+    HONESTY NOTE: three timestamps written earlier in this session (15:05Z,
+    15:20Z, 15:40Z on the closures and this entry) were ahead of real UTC.
+    Corrected to 15:04Z at wrap-up; the work they label is unchanged.
+- handoff_to: null
+
 ### session_id: 2026-08-02-1647-ingest-eam-dislocs-ni-cu
 - mode: pilot
 - scope: |
@@ -1907,7 +1938,7 @@ last_index_updated: 2026-08-29T15:40Z   # real UTC
     (peratom_stress.out: hydro, vM, full tensor, Voronoi vol); NO
     full-Cu-start runs exist (open question 5 added). Mount served
     exact-path reads but returned empty dir listings (L15 flakiness).
-- closed: 2026-08-29T15:20Z
+- closed: 2026-08-29T15:04Z
 - summary: |
     Closed by designer session 2026-08-29-1442-designer-inbox-merge at Erik's
     instruction; stale in `active` since 2026-08-03T10:05Z (26 days). The work
@@ -2002,7 +2033,7 @@ last_index_updated: 2026-08-29T15:40Z   # real UTC
     OWED TO CANON: three proposals filed in canon/proposals-inbox.md
       (2026-08-04-1710 metric-volume gotcha; 2026-08-04-1712 background
       shape; 2026-08-04-1730 symmetric colour scales). None merged.
-- closed: 2026-08-29T15:20Z
+- closed: 2026-08-29T15:04Z
 - summary: |
     Closed by designer session 2026-08-29-1442-designer-inbox-merge at Erik's
     instruction; stale in `active` since 2026-08-04T18:40Z (25 days). Delivered:
@@ -2065,7 +2096,7 @@ last_index_updated: 2026-08-29T15:40Z   # real UTC
     restart -- the 14:26Z device version contained the same registration
     (split-brain staging: fresh metadata, stale content; see 08-04 false-alarm
     note in the nih-at-dislocs entry).
-- closed: 2026-08-29T15:20Z
+- closed: 2026-08-29T15:04Z
 - summary: |
     Closed by designer session 2026-08-29-1442-designer-inbox-merge at Erik's
     instruction; stale in `active` since 2026-08-05T15:55Z (24 days). Delivered:
@@ -3329,7 +3360,7 @@ last_index_updated: 2026-08-29T15:40Z   # real UTC
     degraded to `mail`. Style rule 6 gained that as an explicit bullet.
     Also recorded: SLURM_CLUSTER_NAME is `cmmc`, not our key `cmmg`, so
     bodies read "cmmc / s.cmmg" (expected; L42 class).
-    GATE FULLY PASSED, CONFIRMED BY ERIK 2026-08-26T15:0xZ: ALL FOUR
+    GATE FULLY PASSED, CONFIRMED BY ERIK 2026-08-26T15:04Z: ALL FOUR
     expected [LMPS] mails are in the mailbox WITH BODIES -- 2 x STARTED
     (one per array task), 1 x COMPLETED, 1 x FAILED. The two apparent gaps
     in the first paste (a bodiless COMPLETED, a missing STARTED _1) were
