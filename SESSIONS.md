@@ -8,209 +8,96 @@ LLM-LMPS Cowork session self-registers on startup, updates
 See ARCHITECTURE.md §17 (Concurrency model) for the rules and
 `canon/session-startup.md` for the startup ritual.
 
-last_index_updated: 2026-08-29T15:04Z   # real UTC (wrap-up)
+last_index_updated: 2026-08-29T19:08Z   # real UTC (inbox drained)
 
 ---
 
 ## active
 
+### session_id: 2026-08-29-1915-designer-inbox-merge
+- mode: designer
+- scope: |
+    Work the proposal inbox. Erik, 2026-08-29T19:06Z: "take on designer role, work on
+    the inbox, tell me what needs to be pushed to git". Three PENDING proposals,
+    all filed by 2026-08-29-1520-hydride-cycle-status (now closed) -- i.e. this
+    session is reviewing that session's proposals, which is noted openly rather
+    than treated as a rubber stamp. Then report the git state of the repo.
+- started: 2026-08-29T19:06Z
+- last_active: 2026-08-29T19:08Z
+- simulation_root: ~/Desktop/SIMULATIONS   # connected; not written by this session
+- machine: M5   # canon/local/.this-machine
+- owns_writes_to:
+  - LLM-LAMMPS-public/canon/**
+  - LLM-LAMMPS-public/SESSIONS.md (this entry only)
+- designer_lock: |
+    TAKEN 2026-08-29T19:06Z. Verified free first: all other active entries are
+    pilot mode, and the previous holder (2026-08-29-1442-designer-inbox-merge)
+    closed 2026-08-29T15:04Z.
+- scope_collisions: |
+    None. No project tree is touched. 2026-08-29-1536-mcsites-natoms-bugfix-handoff
+    owns DEVEL/MC-SITES-LAMMPS/** and is not affected by canon edits.
+- in_flight: |
+    * Erik to commit + push LLM-LAMMPS-public (4 modified files). NOT done by
+      this session -- commit/push is his, and the device shell cannot remove
+      the .git/index.lock files its own `git status` calls left behind.
+- work_done: |
+    INBOX DRAINED -- 0 pending proposals remain (the two surviving "status:
+    pending" strings are the format template at line 27 and prose inside an
+    older merged entry).
+    * 2026-08-29-1525-name-the-aim-not-just-the-number -> MERGED to
+      preferences.md "Communication style". Worked example kept; the
+      SESSIONS.md/hand-off note folded into the rule's list of surfaces rather
+      than made a second bullet, so no session reads chat and files as different.
+    * 2026-08-29-1610-index-before-you-trust-a-frame-walker -> MERGED as L49,
+      to lessons.md NOT learnings.md: it prescribes a concrete technique against
+      a concrete failure, which is what lessons.md is for.
+    * 2026-08-29-1905-a-handoff-command-runs-in-a-shell-you-are-not-in ->
+      MERGED IN PART, SPLIT. Glob/quoting half to preferences.md "Command
+      hand-offs", strengthened from "prefer no globs" to "no globs", with the
+      --include/--exclude skeleton and the zsh fact stated explicitly. Its
+      stated-expectation half ABSORBED INTO L49, where the other half of the
+      same incident already lives -- it is not a hand-off rule, it is the same
+      defect one layer up.
+    All four lints clean (no-identity sh + py, canon-paths, role-tag).
+- notes: |
+    This session reviewed proposals filed by 2026-08-29-1520-hydride-cycle-status,
+    a session in this same conversation. Recorded openly. Editorial judgement was
+    exercised rather than assumed: one proposal was split and its halves sent to
+    different files, one was retargeted from learnings.md to lessons.md, and one
+    rule was strengthened past what it proposed.
 
-### session_id: 2026-08-27-0915-hydride-cycle-continue
+### session_id: 2026-08-29-1536-mcsites-natoms-bugfix-handoff
 - mode: pilot
 - scope: |
-    CONTINUE ni-h-hydride-cycle-eam (Ni (100) film, H charge-discharge).
-    Erik, 2026-08-27T09:1xZ: "prepare everything which is easily done";
-    FIRST DELIVERABLE = the dislocated slab from thread 02 (biaxial misfit
-    strain, job 22730592) -- mirror its dumps to the Mac. Then: harvest +
-    analyse thread 02; analyse the 900 K mu bracket (array 22730595) and
-    report mu_t(900 K); draft the thread 03 + 04 production sbatch
-    hand-offs (both re-probes passed). Threads 05/06 cycle inputs are
-    unblocked by the bracket but NOT written this session unless asked.
-- started: 2026-08-27T09:15Z
-- last_active: 2026-08-27T14:00Z
-- simulation_root: ~/Desktop/SIMULATIONS   # connected folder, matches local.yaml default
-- machine: M5   # canon/local/.this-machine
+    MC-SITES-LAMMPS code project. Erik, 2026-08-29T15:36Z: which folders/repos a
+    bug fix touches; then prepare an autonomous Claude Code kickoff for the
+    `sum of nlocal != natoms` abort of the thread-03 discharge campaigns; then
+    walk him through getting a v1.2 binary onto cmmg and resuming.
+    Deliverables: KICKOFF-BUGFIX-NATOMS-2026-08-29.md and a revised
+    RUNBOOK-2026-08-29-cluster-rebuild-resume.md (both in DEVEL/MC-SITES-LAMMPS).
+    No submissions; no cluster writes.
+- started: 2026-08-29T15:36Z
+- last_active: 2026-08-29T18:40Z
+- simulation_root: ~/Desktop/SIMULATIONS   # connected read-only for path resolution
+- machine: M5
 - cluster_identity: |
-    cmmg -> <CLUSTER_USER>@<CLUSTER_HOST>, scratch /cmmc/ptmp/<CLUSTER_USER>
-    (resolved from canon/local/clusters.local.yaml, echoed in chat only).
-    Mount ~/cluster-mounts/cmmg CONNECTED and HEALTHY -- listings and
-    exact-path reads both work. NOTE: a `grep -c` over the 23.5 GB thread-02
-    trajectory through the mount TIMED OUT the 45 s device shell twice and
-    briefly wedged it; frame counts are computed from the submit -var block
-    instead. Do not scan multi-GB files through sshfs.
+    cmmg -> <CLUSTER_USER>@<CLUSTER_HOST>, scratch /cmmc/ptmp/<CLUSTER_USER>.
+    Mount ~/cluster-mounts/cmmg CONNECTED, used READ-ONLY and only for small
+    listings (multi-GB trajectories never scanned through sshfs).
 - owns_writes_to:
+  - DEVEL/MC-SITES-LAMMPS/**
   - LLM-LAMMPS-public/SESSIONS.md (this entry only)
-  - SIMULATIONS/Ni-H-HYDRIDE-CYCLE-EAM/**
-- designer_lock: NOT taken -- pilot mode. Lock is FREE.
+- designer_lock: NOT taken -- pilot mode.
 - scope_collisions: |
-    TAKEOVER, ON THE RECORD: SIMULATIONS/Ni-H-HYDRIDE-CYCLE-EAM/** is
-    declared by 2026-08-25-1725-nih-two-project-status (added 08-25T18:15Z,
-    last_active 2026-08-26T16:05Z, conversation ended). This session takes
-    the cycle scope ONLY; that entry keeps its at-dislocs threads 04/05 and
-    the phase-diagram run-15 path, and is NOT closed here. Erik told in-turn.
-    ALSO ACTIVE, no collision: 2026-08-27-0852-portfolio-status (READ-ONLY
-    portfolio readout, owns no project tree).
-- step_1b: |
-    DISCHARGED. Every open loop touching this scope was checked in its own
-    run dir on the mount, 2026-08-27T09:0x-09:2xZ:
-    * thread 02 PRODUCTION 22730592 -- COMPLETE 2026-08-27T00:52Z. Gates
-      PASS: empty .err, 2x ALL PHASES COMPLETE, 10 STAGE COMPLETE, 5 Loop
-      time, wall 25921 s (7.2 h vs the 12 h cap), 124.9-143.7 steps/s.
-      23.5 GB traj (~152 frames incl. per-atom stress), blockavg + every100
-      thermo, 233 MB final stress-free cell. UNHARVESTED -> this session.
-    * thread 03 re-probes 22730593_[0-1] -- BOTH PASS (boundary p p f fix
-      confirmed, H-above-wall check clean, 56.8-58.3 steps/s in the MC
-      phases). Production UNBLOCKED, NOT submitted.
-    * thread 04 re-probes 22730594_[0-1] -- BOTH PASS, dome check clean,
-      37.0-58.6 steps/s. Production UNBLOCKED, NOT submitted.
-    * thread 05 run 00 / phase-diagram run 15 mu-bracket 900 K
-      22730595_[0-9] -- tasks 0-8 (mu -2.55..-2.15) COMPLETE with gates;
-      task 9 (mu = -2.10) alive at 09:1xZ, 24 h cap ~09:59Z, timeout
-      accepted by design (L34). Task 2 (mu = -2.45) is a ZOMBIE: science
-      finished 08-26T13:49Z with the full gate block and JOB DONE, but the
-      lmp job step never reaped; scancel handed to Erik (strict-A).
+    SIMULATIONS/Ni-H-HYDRIDE-CYCLE-EAM/** is owned by
+    2026-08-29-1520-hydride-cycle-status. NOT taken over: this session only READ
+    that tree to resolve real paths for the runbook. The thread-03 continuation
+    input + submit scripts (RUNBOOK section 5, TRAP 2) are deliberately left to
+    that scope rather than drafted here.
 - in_flight: |
-    * 22730595_9 (mu = -2.10) -- TIMED OUT at the 24 h cap 2026-08-27T09:58Z,
-      as designed (L34): x = 17.4, a_eff = 11.8 A, cell dissolved. Excluded
-      as non-physical, NOT retried. The array is now finished.
-    * scancel 22730595_2 DONE by Erik 2026-08-27T11:4xZ -- zombie job step
-      released. The 900 K bracket array 22730595 is fully closed.
-    * SUBMITTED by Erik 2026-08-27T11:4xZ, both confirmed with job IDs:
-      - 22733464  thread 03 CYCLE rate B corrected, array 0-1 (fixlat/freelat),
-        1024 ranks p.cmmg, 11.21 ns, 4-day cap. Projection ~80 h / ~84 h.
-      - 22733466  thread 04 CYCLE rate B DOME, array 0-1, same shape.
-        Projection 65-84 h (MC load imbalance, NOT 14x cheaper).
-      Harvest gates for both: empty .err, JOB DONE, 2x ALL PHASES COMPLETE,
-      22 phase markers, 5 Loop time lines, BC CHECK matches task, zero H
-      above the 134 a0 wall, trace cols 7-9 with nNizone ~201600 (t03) /
-      ~14500 (t04) and x_local rising on the charge leg, finite averaged
-      stress columns in frames. TIMEOUT is recoverable: rolling restarts
-      + absolute-step mu logic are armed in both inputs.
-    * HANDED 2026-08-27T10:5xZ (strict-A), all in HANDOFF-2026-08-27.md at
-      the project root, lint-handoff clean:
-      - thread 03 production: sbatch submit-cycle-rateB-corrected_*.slurm
-        (~80 h fixlat / ~84 h freelat vs the 96 h cap; degas NOT split)
-      - thread 04 production: sbatch submit-cycle-rateB-dome_*.slurm
-        (65-84 h; dome is NOT cheaper -- MC load imbalance, see notes)
-      - two rsync blocks mirroring the thread-02 final cell (233 MB) and
-        trajectory (23.5 GB) to the Mac
-      Threads 03 + 04 ARE NOW SUBMITTED (IDs above).
-    * THREAD 05 RUN 02 ADDED 2026-08-27T12:0xZ at Erik's request, after the
-      finite-size caveat was raised in chat: 02_SIZE-SCAN-900K, the same six
-      mu (run 00's bracket edges + run 01's four fine points) at L = 14
-      (10,976 Ni, 2.74x), 32 ranks s.cmmg, probe + array, 24 h cap
-      provisional pending the probe's steps/s. Tests whether the EMPTY
-      INTERVAL WIDTH (0.477, the "gap has halved since 300 K" claim) is
-      physical or finite-size; mu_t's POSITION is not at risk either way.
-      Input body diff-verified IDENTICAL to runs 00 and 01; lint-lammps-input
-      and bash -n clean on all three files.
-    * Runs 01 and 02 STAGED and PROBES SUBMITTED by Erik 2026-08-27T13:3xZ:
-      - 22733979  run 01 fine bracket PROBE, 1 task mu = -2.46, L10,
-        16 ranks s.cmmg, 30 min cap. RUNNING: trace filling, step 200 of
-        4400 at 13:35Z, x = 0.0043 and rising, acceptance 0.39 %.
-      - 22733980  run 02 size-scan PROBE, 1 task mu = -2.45, L14,
-        32 ranks s.cmmg, 30 min cap. RUNNING: step 120 of 4400,
-        x = 0.00073, acceptance 0.13 %.
-        CELL SIZE CONFIRMED: pe(step 0) = -49698.2 eV at the same
-        -4.528 eV/atom as the L10 run's -18111.6 / 4000, so
-        N_Ni = 10,976 exactly as designed.
-      BOTH PROBES COMPLETED by 13:5xZ. Gates: empty .err, ALL PHASES
-      COMPLETE x2, JOB DONE, healthy trace at step 4400 (run 01
-      x = 0.434, a_eff 3.697, acceptance 10.2 %; run 02 x = 0.281,
-      a_eff 3.661, acceptance 6.4 %), N_Ni = 10,976 confirmed for L14.
-      L26 measured: run 01 6.5 steps/s (L10, 16 ranks), run 02 5.7
-      steps/s (L14, 32 ranks) -> 88,000 production steps project 3.7 h
-      and 4.3 h before the occupancy slowdown, against caps of 12 h and
-      24 h. Both caps stand with room. NOTE the scaling result: L14 on
-      32 ranks is only 1.14x slower per step than L10 on 16, against
-      1.37x expected from 2.74x atoms on 2x ranks.
-      PROBE GATE DEFECT FOUND AND FIXED (mine): the gate block read the
-      block-averaged ave file, which holds ZERO data rows in ANY probe of
-      this family (fix AVE has Nfreq 4000 and is defined after equil, so
-      under -var equil 400 -var sample 4000 the first complete window
-      falls past the end of the run). Both probes therefore printed
-      "x = 0.0000" while passing everything real. Production unaffected
-      (equil 8000 -> first ave row at step 12000). Both probe submits
-      re-gated on the TRACE with an explicit row count; run 00's probe
-      submit has the same defect and is in another session's scope.
-      Canon proposal 2026-08-27-1400-probe-overrides-can-silence-a-gate.
-    * PRODUCTIONS SUBMITTED by Erik 2026-08-27T13:5xZ, before the probe
-      .out files were read -- both turned out fine, and the risk was low
-      (identical input bodies to run 00, which ran 10 tasks clean), but it
-      is on the record that the gate check happened after the fact.
-      - 22734031  run 01 fine bracket, array 0-3 (mu -2.49..-2.46), L10.
-        All four RUNNING at 13:5xZ, step 700, x = 0.014-0.021.
-      - 22734032  run 02 size scan, array 0-5 (mu -2.50..-2.45), L14.
-        All six RUNNING, step 500-560, x = 0.0067-0.011.
-    * Thread 04 array 22733466: only task _0 has started; task _1 was still
-      PENDING at 13:35Z. Normal, not a fault -- but a harvest session must
-      confirm BOTH tasks ran before comparing the two boundary conditions.
-    * ALSO HANDED 2026-08-27T11:3xZ (strict-A): thread 05 RUN 01, the FINE
-      900 K bracket -- 4 points at 0.01 eV inside run 00's (-2.50, -2.45),
-      probe then array, staging block included (new remote dir, so
-      --rsync-path mkdir per the first-hand-off-into-a-new-tree rule).
-      Input body verified IDENTICAL to run 00's by diff; bash -n clean.
-    * DOWNLOAD, PARTIAL AND DELIBERATELY SO: sshfs mount measured at
-      7.9 MB/s (bs=8M; 3.7 at bs=1M), and the device shell is capped at
-      45 s and KILLS BACKGROUND PROCESSES on return, so 23.5 GB would be
-      ~120 round-trips. Pulled instead: the 233 MB final cell, and five
-      complete frames (steps 570000-610000) extracted by SEEKING to the
-      byte range around the avalanche. Full trajectory left to Erik's
-      direct rsync (block 2b), which does not pay the sshfs penalty.
-- work_done: |
-    * THREAD 02 HARVESTED AND ANALYSED. Curated mirror on the Mac (thermo,
-      log, .out). Stress corrected for vacuum dilution (f = 1.1250; the raw
-      whole-cell number understates every stress by 11 %). Biaxial modulus
-      196.4 GPa (checks against C11+C12-2C12^2/C11 ~ 202 GPa). NUCLEATION at
-      eps = 5.25 %, sigma = 6.22 GPa (step 580000), single avalanche with a
-      5.74 GPa load drop -- NOT the 1.15 % that a deviation-from-linearity
-      tolerance reports (that is nonlinear elasticity). Hold relaxes 0.25 GPa.
-      Plastic strain 5.46 % at peak -> 1.25 % after unload (4.21 % recovered);
-      residual 1.00 % permanent, lx 212.21 -> 214.34 A.
-    * THE DISLOCATED SLAB IS CHARACTERISED. DXA on the final stress-free cell:
-      610 segments, L = 9455 A, rho = 4.9e16 m^-2 (4.5 nm spacing). Shockley
-      partials on wide faults, 1/6<011> stair-rod locks, 1/3<111> Frank loops;
-      piled against the fixed base, clean under the free surface. Figures +
-      viz cards + .ovito session + prov sidecars in analysis/.
-      FLAG FOR ERIK: 4.9e16 m^-2 may be too dense to charge as a "film".
-    * 900 K MU BRACKET REPORTED, thread 05 run 00. mu_t(900 K) = -2.475 +-
-      0.025 eV, bracket (-2.50, -2.45); shift -0.200 eV vs mu_t(300 K).
-      Widest empty x interval 0.477 with 0 converged points inside (~1 at
-      300 K) -- the two-phase gap has halved; the 0.05 eV grid cannot decide
-      whether it is still first order. All x > 1.05 points still need a
-      crystallinity check (final-state files mirrored, no cluster time).
-      THREADS 05 AND 06 ARE UNBLOCKED. The thread-03 mu window (-2.45 ->
-      -2.10) must be SHIFTED DOWN for 900 K, not reused.
-    * NUCLEATION EVENT CAUGHT from the extracted frames: DXA gives 0
-      segments at step 570000 (pristine) and exactly 1 segment, L = 77 A,
-      at step 580000 -- a Shockley partial b = 1/6[-1-12], xi = [1-10],
-      88 deg edge. So the 5.74 GPa load drop follows a SINGLE surface
-      emission event 10 ps earlier, and 6.22 GPa is a measurement of the
-      homogeneous surface-emission stress at 300 K / 1e8 1/s.
-      CAVEAT ON RECORD: PTM cannot classify these frames (everything reads
-      "Other" at 5.25 % strain; rmsd_cutoff 0.25 and 0.0 both applied per
-      the prov sidecars and neither helped), so the RENDERED IMAGES of the
-      nucleation frames carry no structural information. DXA is unaffected
-      -- it works on the elastically mapped Burgers circuit, not PTM labels.
-      Frames 590000/600000/610000 are on disk and NOT yet analysed.
-    * Artefacts written: analysis/analyse-biaxial-misfit-cycle_*.py,
-      biaxial-misfit-cycle-summary_*.dat, fig3_*.{pdf,png},
-      analyse-mu-bracket-900K_*.py, mu-bracket-900K-summary_*.dat,
-      fig4_*.{pdf,png}, the two DXA viz cards + PNGs + .ovito + prov,
-      HANDOFF-2026-08-27.md (219 lines, lint-handoff clean); thread.md updated
-      for threads 02 and 05; thread 05 run 01 (fine bracket) input + probe +
-      production submits written; 4 canon proposals filed.
-- notes: |
-    Cloud Cowork session on M5's connected folders (DEVEL, SIMULATIONS,
-    cluster-mounts/cmmg). WALLTIME RE-DERIVATION done from thread 01's
-    MEASURED per-phase Loop times (fixlat rate B: settle 66.8 s / charge
-    68571 s / hold 33478 s / discharge 107342 s / degas 13566 s = 61.9 h
-    for 8.01 ns) rather than a fresh estimate -- thread 03 projects ~80 h
-    (fixlat) / ~84 h (freelat) against the 96 h cap, so the degas does NOT
-    need splitting. Thread 04's dome is NOT cheaper than the full layer
-    despite a 14x smaller catalogue (probe MC phases 37-49 steps/s vs
-    thread 03's 57-58) -- suspected MPI load imbalance on the small MC
-    region; flagged to Erik and to be recorded in thread 04's thread.md.
+    Erik to run RUNBOOK-2026-08-29-commit-tag-push.sh (Mac, 3 repos incl. pushes),
+    then the cmmg rebuild per RUNBOOK-2026-08-29-cluster-rebuild-resume.md.
+    Thread-03 continuation input/submit still to be written before any resume.
 
 ### session_id: 2026-08-27-0852-portfolio-status
 - mode: pilot
@@ -1762,6 +1649,392 @@ last_index_updated: 2026-08-29T15:04Z   # real UTC (wrap-up)
 ---
 
 ## recently_closed
+
+### session_id: 2026-08-29-1520-hydride-cycle-status
+- mode: pilot
+- scope: |
+    STATUS CHECK on ni-h-hydride-cycle-eam (Ni (100) film, H charge-discharge).
+    Erik, 2026-08-29T15:17Z: "check on the simulation project ni-h-hydride-cycle-eam".
+    Reconcile every open loop left by 2026-08-27-0915-hydride-cycle-continue
+    against the run dirs on the mount and report. No submissions unless asked.
+- started: 2026-08-29T15:17Z
+- last_active: 2026-08-29T19:03Z
+- simulation_root: ~/Desktop/SIMULATIONS   # connected folder, matches local.yaml default
+- machine: M5   # canon/local/.this-machine
+- cluster_identity: |
+    cmmg -> <CLUSTER_USER>@<CLUSTER_HOST>, scratch /cmmc/ptmp/<CLUSTER_USER>
+    (resolved from canon/local/clusters.local.yaml, echoed in chat only).
+    Mount ~/cluster-mounts/cmmg CONNECTED and HEALTHY. Do NOT scan the
+    multi-GB trajectories through sshfs (45 s device-shell cap, see the
+    2026-08-27 entry).
+- owns_writes_to:
+  - LLM-LAMMPS-public/SESSIONS.md (this entry only)
+  - SIMULATIONS/Ni-H-HYDRIDE-CYCLE-EAM/**
+  - SIMULATIONS/Ni-H-PHASE-DIAGRAM-EAM-MEAM/03_EAM-ISOTHERM-AND-ELASTICS/**
+    (SCOPE EXPANDED 2026-08-29T15:39Z on Erik's in-turn instruction to move the 900 K
+    isotherm runs there and ingest the verdict back. Declared by
+    2026-08-25-1725-nih-two-project-status for the run-15 path only,
+    last_active 2026-08-26T16:05Z, conversation ended -- takeover on the
+    record, that entry is NOT closed here.)
+- designer_lock: NOT taken -- pilot mode. Lock is FREE (the 2026-08-29-1442
+  designer-inbox-merge session closed 2026-08-29T15:04Z).
+- scope_collisions: |
+    TAKEOVER, ON THE RECORD: SIMULATIONS/Ni-H-HYDRIDE-CYCLE-EAM/** is declared
+    by 2026-08-27-0915-hydride-cycle-continue (last_active 2026-08-27T14:00Z,
+    conversation ended, in_flight left open for 2 days). This session takes the
+    cycle scope; Erik told in-turn.
+- step_1b: |
+    DISCHARGED for this scope from the run dirs on the mount, 2026-08-29T15:17Z
+    (marker + mtime, not sacct -- L15/L42 discipline):
+    * thread 03 production 22733464_[0-1] -- BOTH FAILED in phase 3 (discharge),
+      NOT a timeout. Identical fault, different steps:
+        _0 fixlat  : ERROR: Fix mc/sites MC consistency check failed on step
+                     4337001: sum of nlocal 1955352 != natoms 1955353
+                     (src/MC/fix_mc_sites.cpp:674), 2026-08-28T20:25Z
+        _1 freelat : same check, step 4137001, 1944571 != 1944574,
+                     2026-08-28T19:14Z
+      Phases 0-2 COMPLETE and clean in both (settle 67/72 s; charge 3.2 Msteps,
+      86840/86800 s; hold 800 ksteps, 31037/31458 s; 23.2 / 21.4 steps/s on
+      1024 ranks, Modify 69-71 % of wall). ~35 h x 1024 ranks per task banked.
+      Rolling restarts A+B on disk (Aug 28 19:19 / 19:56 fixlat, 18:03 / 18:43
+      freelat, ~172 MB each) and mu(step) is on ABSOLUTE step bounds, so a
+      read_restart resume lands on the correct discharge ramp slope. Trajs
+      7.15 GB (fixlat) / 6.83 GB (freelat) are intact up to the crash.
+    * thread 04 array 22733466_[0-1] -- BOTH ALIVE and writing at 2026-08-29T15:17Z.
+      Task _1 did start (15:19Z 08-27), so both boundary conditions exist.
+      Phases 0-2 complete in both; now in phase 3 (discharge), fixlat at step
+      5,798,700 and freelat at 5,405,000 of S3 = 7,210,000. Measured phase-3
+      rate 26.3 / 20.5 steps/s -> phase 3 ends ~08-30T06Z (fixlat) and
+      ~08-30T16Z (freelat), before the 4-day caps (08-31T11:35Z / 15:19Z),
+      but the degas phase after it is NOT yet costed against the cap.
+      NOTE: thread 04 is ALREADY PAST the step where thread 03 died, so the
+      mc/sites consistency fault is stochastic, not deterministic.
+    * thread 05 run 01 (fine 900 K bracket, L10) 22734031_[0-3] -- ALL FOUR
+      COMPLETE with gates 2026-08-27T17:55-19:35Z. x(mu): -2.49 -> 0.300,
+      -2.48 -> 0.443, -2.47 -> 0.526, -2.46 -> 0.583.
+    * thread 05 run 02 (size scan, L14) 22734032_[0-5] -- ALL SIX COMPLETE
+      with gates 2026-08-27T18:23-21:43Z, N_Ni = 10,976 confirmed. x(mu):
+      -2.50 -> 0.143, -2.49 -> 0.273, -2.48 -> 0.415, -2.47 -> 0.505,
+      -2.46 -> 0.574, -2.45 -> 0.629.
+    * The 0.477-wide "empty x interval" reported from run 00's 0.05 eV grid is
+      FILLED at 0.01 eV, at BOTH sizes, with L10 and L14 agreeing to <0.03 in
+      x at every shared mu. UNHARVESTED -> this session.
+- in_flight: |
+    * 22733466_[0-1] (thread 04 dome, fixlat + freelat) STILL RUNNING at close,
+      writing at 19:02Z, in phase 3 (discharge). SEE THE SUMMARY: Erik has said
+      continuing the cycle runs is not a priority, so a resuming session should
+      ASK whether to scancel these two rather than assume they should finish.
+      Harvest gates unchanged from the 2026-08-27 entry. WATCH for the same
+      mc/sites consistency abort that killed thread 03.
+    * PROPOSED TO ERIK, not run (strict-A, cluster writes): move the three
+      900 K isotherm cluster dirs from Ni-H-HYDRIDE-CYCLE-EAM/05_*/0{0,1,2}_*
+      to the matching phase-diagram path. Safe now -- both arrays finished.
+    * DONE, no cluster time: crystallinity check on ALL 19 converged isotherm
+      cells (runs 15/16/17). Ni-Ni g(r), R = g(min)/g(peak), threshold calibrated
+      on this isotherm's own dilute end. ALL CRYSTALLINE, n1 = 11.95-12.73.
+      The three x > 1.05 points (mu -2.25/-2.20/-2.15) come out R = 0.067/0.090/
+      0.196 -- solid, quotable as hydride compositions, but R rises monotonically
+      with H and -2.15 is nearest the boundary. mu = -2.10 CANNOT be checked (no
+      final state written before the cap) -- excluded for a second reason now.
+    * HANDED 2026-08-29T15:53Z (strict-A), HANDOFF-2026-08-29.md at the project
+      root, lint-handoff clean, 3 blocks:
+      1. move the three 900 K isotherm cluster dirs to the phase-diagram path
+         (both arrays finished, safe);
+      2. push tools/ and sbatch submit-extract-ovito-frames_ni-h-cycle.slurm --
+         indexes all 5 cycle trajectories (~62 GB on scratch) and cuts the phase-
+         boundary frames with ALL 11 columns, so f_AVE_STRESS[1..6] survives;
+      3. rsync the for-ovito products down (~0.8 GB/run, ~4-5 GB total) plus
+         thread 03's two probe -final.lmps.
+      Thread 04 is still running; the submit script says how to exclude it.
+    * BLOCKED ON ERIK before viz cards can be written: species mapping (1 = Ni,
+      2 = H to confirm), which stress measure (hydrostatic / szz / von Mises;
+      f_AVE_STRESS is stress/atom in bar-A^3 and needs a per-atom volume), and
+      whole slab vs slice vs non-fcc-only.
+- work_done: |
+    HARVEST. The fine 900 K bracket (was thread 05 run 01) and the L14 size
+    check (was run 02) had NOTHING on the Mac -- inputs and submit scripts
+    only, all ten tasks' data in cluster scratch, which is not backed up.
+    Curated mirror pulled (ave, trace, named log, final-state; trajectories
+    left on scratch as for run 00) and md5-verified: 40 files, 0 mismatches.
+    ANALYSIS. New analyse-isotherm-900K_runs15-16-17_EAM-two-sizes.py in the
+    phase-diagram thread; runs 15+16 are ONE L10 series (identical input
+    bodies), run 17 the L14 series. Reproduces run 15's ten published values
+    EXACTLY against the old summary file, and all 10 new tasks' own gate-block
+    x exactly. Outputs isotherm-900K_two-sizes_EAM.dat and
+    fig14_isotherm-900K_two-sizes_EAM.{pdf,png}.
+    RESULT. Run 15's 0.477-wide "empty" x interval is FILLED at d0.01 by 4 L10
+    and 6 L14 points; the sizes agree to max|dx| = 0.034 at all six shared mu.
+    The 0.477 figure and "the gap has halved since 300 K" are RETIRED; the
+    mu_t(900 K) = -2.475 +- 0.025 eV bracket STANDS. Steepest d0.01 step is
+    dx = 0.148 (L10) / 0.135 (L14) at the SAME mu (-2.49 -> -2.48), so any
+    residual discontinuity is bounded by ~0.15 and does not scale with size.
+    NOT claimed: that the transition is continuous -- a finite cell can hold a
+    stable interfacial state at intermediate x. The order test is mu-hysteresis.
+    Also found: the "widest empty x interval" statistic is GRID-DEPENDENT --
+    over the full L10 set it now returns 0.351 at mu -2.20..-2.15, pointing at
+    the coarse tetrahedral branch, not the transition. Reported three ways now.
+    TRANSFER. Run 00 -> run 15 (results + gate blocks; its .in/submit were
+    already there, cmp-identical, and the leftover dir is parked in
+    SIMULATIONS/_to_delete/ awaiting Erik's delete). Run 01 -> 16, run 02 -> 17,
+    whole dirs, each with a TRANSFER-NOTE.md. Old script kept, repointed and
+    banner-marked as analyse-mu-bracket-900K_run15_EAM-SUPERSEDED.py; fig4 and
+    its summary renamed _run15_. Phase-diagram thread.md gained a runs-16+17
+    section with the verdict and four open items; thread 05's thread.md rewritten
+    to hold ONLY the ingested verdict + the cycle blocker; HANDOFF-2026-08-27.md
+    banner-marked where it stages now-moved paths. 79 files md5-verified overall.
+    OVITO TOOLING WRITTEN AND TESTED: tools/extract-ovito-frames_ni-h-cycle.py
+    (streaming frame extractor, --list/--steps/--every/--last, writes a
+    .frameindex) + its sbatch. TESTED BEFORE HAND-OVER AND THE TEST FOUND A REAL
+    BUG: the header parser ate 10 lines of the 9-line dump header, desynchronised
+    the body skip, and SILENTLY kept every other frame -- a --list on a real dump
+    reported 23 frames where 45 existed, and the output was well-formed either
+    way. Fixed, re-verified on a synthetic 11-column fixture and a real dump.
+    Canon proposal 2026-08-29-1610-index-before-you-trust-a-frame-walker.
+- notes: |
+    Cloud Cowork session on M5's connected folders (DEVEL, LLM-LAMMPS-public,
+    SIMULATIONS, cluster-mounts).
+    Canon proposal filed 2026-08-29-1525-name-the-aim-not-just-the-number
+    (preferences.md): a thread/run is never referred to by number alone --
+    every first mention carries the aim it is meant to answer. Erik's ask,
+    after this session's own readout quoted thread 05 runs 01+02 by number.
+- closed: 2026-08-29T19:03Z
+- summary: |
+    Reconciled the 2-day-old open loops, then harvested / analysed / transferred
+    the 900 K isotherm work out of this project and ingested its verdict back.
+    RESULT: run 15's 0.477 "empty" x interval is FILLED at d0.01 at both cell
+    sizes -- that figure and "the gap has halved since 300 K" are RETIRED;
+    mu_t(900 K) = -2.475 +- 0.025 eV STANDS. All 19 converged isotherm cells
+    confirmed CRYSTALLINE (g(r) check, the last open caveat on run 15). Runs
+    moved to ni-h-phase-diagram-eam-meam as 15/16/17, cluster-side move done by
+    Erik. OVITO material prepared and delivered: 6 key frames per run x 4 runs,
+    3.68 GB, all 11 columns so f_AVE_STRESS survives, plus .frameindex sidecars
+    so any other frame is a seek not a scan. Erik has the frames and has LOOKED
+    AT THEM.
+    ERIK'S VERDICT, and the reason this closes rather than hands over: NO
+    DISLOCATION NUCLEATION could be detected in the cycle runs. Continuing them
+    is NOT a priority. Two new ideas on the record in threads 03/04 thread.md:
+    (1) energy-minimise selected frames to see if anything nucleates at 0 K --
+    cheap, uses frames already on the Mac, NOT blocked by the mc/sites fault;
+    (2) drive mu much harder to genuinely suck the H out -- IS blocked by it.
+    in_flight NON-EMPTY at close: thread 04's two tasks are still burning
+    2 x 1024 ranks on work Erik has just deprioritised -- a scancel decision is
+    the first thing a resuming session should put to him.
+    Two canon proposals filed from my own errors this session:
+    2026-08-29-1610 (index before you trust a frame walker -- the extractor
+    silently kept every other frame) and 2026-08-29-1905 (a hand-off command
+    runs in a shell you are not in -- zsh globs, and a documented behaviour the
+    code did not have).
+- handoff_to: null
+
+
+### session_id: 2026-08-27-0915-hydride-cycle-continue
+- mode: pilot
+- scope: |
+    CONTINUE ni-h-hydride-cycle-eam (Ni (100) film, H charge-discharge).
+    Erik, 2026-08-27T09:1xZ: "prepare everything which is easily done";
+    FIRST DELIVERABLE = the dislocated slab from thread 02 (biaxial misfit
+    strain, job 22730592) -- mirror its dumps to the Mac. Then: harvest +
+    analyse thread 02; analyse the 900 K mu bracket (array 22730595) and
+    report mu_t(900 K); draft the thread 03 + 04 production sbatch
+    hand-offs (both re-probes passed). Threads 05/06 cycle inputs are
+    unblocked by the bracket but NOT written this session unless asked.
+- started: 2026-08-27T09:15Z
+- last_active: 2026-08-27T14:00Z
+- simulation_root: ~/Desktop/SIMULATIONS   # connected folder, matches local.yaml default
+- machine: M5   # canon/local/.this-machine
+- cluster_identity: |
+    cmmg -> <CLUSTER_USER>@<CLUSTER_HOST>, scratch /cmmc/ptmp/<CLUSTER_USER>
+    (resolved from canon/local/clusters.local.yaml, echoed in chat only).
+    Mount ~/cluster-mounts/cmmg CONNECTED and HEALTHY -- listings and
+    exact-path reads both work. NOTE: a `grep -c` over the 23.5 GB thread-02
+    trajectory through the mount TIMED OUT the 45 s device shell twice and
+    briefly wedged it; frame counts are computed from the submit -var block
+    instead. Do not scan multi-GB files through sshfs.
+- owns_writes_to:
+  - LLM-LAMMPS-public/SESSIONS.md (this entry only)
+  - SIMULATIONS/Ni-H-HYDRIDE-CYCLE-EAM/**
+- designer_lock: NOT taken -- pilot mode. Lock is FREE.
+- scope_collisions: |
+    TAKEOVER, ON THE RECORD: SIMULATIONS/Ni-H-HYDRIDE-CYCLE-EAM/** is
+    declared by 2026-08-25-1725-nih-two-project-status (added 08-25T18:15Z,
+    last_active 2026-08-26T16:05Z, conversation ended). This session takes
+    the cycle scope ONLY; that entry keeps its at-dislocs threads 04/05 and
+    the phase-diagram run-15 path, and is NOT closed here. Erik told in-turn.
+    ALSO ACTIVE, no collision: 2026-08-27-0852-portfolio-status (READ-ONLY
+    portfolio readout, owns no project tree).
+- step_1b: |
+    DISCHARGED. Every open loop touching this scope was checked in its own
+    run dir on the mount, 2026-08-27T09:0x-09:2xZ:
+    * thread 02 PRODUCTION 22730592 -- COMPLETE 2026-08-27T00:52Z. Gates
+      PASS: empty .err, 2x ALL PHASES COMPLETE, 10 STAGE COMPLETE, 5 Loop
+      time, wall 25921 s (7.2 h vs the 12 h cap), 124.9-143.7 steps/s.
+      23.5 GB traj (~152 frames incl. per-atom stress), blockavg + every100
+      thermo, 233 MB final stress-free cell. UNHARVESTED -> this session.
+    * thread 03 re-probes 22730593_[0-1] -- BOTH PASS (boundary p p f fix
+      confirmed, H-above-wall check clean, 56.8-58.3 steps/s in the MC
+      phases). Production UNBLOCKED, NOT submitted.
+    * thread 04 re-probes 22730594_[0-1] -- BOTH PASS, dome check clean,
+      37.0-58.6 steps/s. Production UNBLOCKED, NOT submitted.
+    * thread 05 run 00 / phase-diagram run 15 mu-bracket 900 K
+      22730595_[0-9] -- tasks 0-8 (mu -2.55..-2.15) COMPLETE with gates;
+      task 9 (mu = -2.10) alive at 09:1xZ, 24 h cap ~09:59Z, timeout
+      accepted by design (L34). Task 2 (mu = -2.45) is a ZOMBIE: science
+      finished 08-26T13:49Z with the full gate block and JOB DONE, but the
+      lmp job step never reaped; scancel handed to Erik (strict-A).
+- in_flight: |
+    * 22730595_9 (mu = -2.10) -- TIMED OUT at the 24 h cap 2026-08-27T09:58Z,
+      as designed (L34): x = 17.4, a_eff = 11.8 A, cell dissolved. Excluded
+      as non-physical, NOT retried. The array is now finished.
+    * scancel 22730595_2 DONE by Erik 2026-08-27T11:4xZ -- zombie job step
+      released. The 900 K bracket array 22730595 is fully closed.
+    * SUBMITTED by Erik 2026-08-27T11:4xZ, both confirmed with job IDs:
+      - 22733464  thread 03 CYCLE rate B corrected, array 0-1 (fixlat/freelat),
+        1024 ranks p.cmmg, 11.21 ns, 4-day cap. Projection ~80 h / ~84 h.
+      - 22733466  thread 04 CYCLE rate B DOME, array 0-1, same shape.
+        Projection 65-84 h (MC load imbalance, NOT 14x cheaper).
+      Harvest gates for both: empty .err, JOB DONE, 2x ALL PHASES COMPLETE,
+      22 phase markers, 5 Loop time lines, BC CHECK matches task, zero H
+      above the 134 a0 wall, trace cols 7-9 with nNizone ~201600 (t03) /
+      ~14500 (t04) and x_local rising on the charge leg, finite averaged
+      stress columns in frames. TIMEOUT is recoverable: rolling restarts
+      + absolute-step mu logic are armed in both inputs.
+    * HANDED 2026-08-27T10:5xZ (strict-A), all in HANDOFF-2026-08-27.md at
+      the project root, lint-handoff clean:
+      - thread 03 production: sbatch submit-cycle-rateB-corrected_*.slurm
+        (~80 h fixlat / ~84 h freelat vs the 96 h cap; degas NOT split)
+      - thread 04 production: sbatch submit-cycle-rateB-dome_*.slurm
+        (65-84 h; dome is NOT cheaper -- MC load imbalance, see notes)
+      - two rsync blocks mirroring the thread-02 final cell (233 MB) and
+        trajectory (23.5 GB) to the Mac
+      Threads 03 + 04 ARE NOW SUBMITTED (IDs above).
+    * THREAD 05 RUN 02 ADDED 2026-08-27T12:0xZ at Erik's request, after the
+      finite-size caveat was raised in chat: 02_SIZE-SCAN-900K, the same six
+      mu (run 00's bracket edges + run 01's four fine points) at L = 14
+      (10,976 Ni, 2.74x), 32 ranks s.cmmg, probe + array, 24 h cap
+      provisional pending the probe's steps/s. Tests whether the EMPTY
+      INTERVAL WIDTH (0.477, the "gap has halved since 300 K" claim) is
+      physical or finite-size; mu_t's POSITION is not at risk either way.
+      Input body diff-verified IDENTICAL to runs 00 and 01; lint-lammps-input
+      and bash -n clean on all three files.
+    * Runs 01 and 02 STAGED and PROBES SUBMITTED by Erik 2026-08-27T13:3xZ:
+      - 22733979  run 01 fine bracket PROBE, 1 task mu = -2.46, L10,
+        16 ranks s.cmmg, 30 min cap. RUNNING: trace filling, step 200 of
+        4400 at 13:35Z, x = 0.0043 and rising, acceptance 0.39 %.
+      - 22733980  run 02 size-scan PROBE, 1 task mu = -2.45, L14,
+        32 ranks s.cmmg, 30 min cap. RUNNING: step 120 of 4400,
+        x = 0.00073, acceptance 0.13 %.
+        CELL SIZE CONFIRMED: pe(step 0) = -49698.2 eV at the same
+        -4.528 eV/atom as the L10 run's -18111.6 / 4000, so
+        N_Ni = 10,976 exactly as designed.
+      BOTH PROBES COMPLETED by 13:5xZ. Gates: empty .err, ALL PHASES
+      COMPLETE x2, JOB DONE, healthy trace at step 4400 (run 01
+      x = 0.434, a_eff 3.697, acceptance 10.2 %; run 02 x = 0.281,
+      a_eff 3.661, acceptance 6.4 %), N_Ni = 10,976 confirmed for L14.
+      L26 measured: run 01 6.5 steps/s (L10, 16 ranks), run 02 5.7
+      steps/s (L14, 32 ranks) -> 88,000 production steps project 3.7 h
+      and 4.3 h before the occupancy slowdown, against caps of 12 h and
+      24 h. Both caps stand with room. NOTE the scaling result: L14 on
+      32 ranks is only 1.14x slower per step than L10 on 16, against
+      1.37x expected from 2.74x atoms on 2x ranks.
+      PROBE GATE DEFECT FOUND AND FIXED (mine): the gate block read the
+      block-averaged ave file, which holds ZERO data rows in ANY probe of
+      this family (fix AVE has Nfreq 4000 and is defined after equil, so
+      under -var equil 400 -var sample 4000 the first complete window
+      falls past the end of the run). Both probes therefore printed
+      "x = 0.0000" while passing everything real. Production unaffected
+      (equil 8000 -> first ave row at step 12000). Both probe submits
+      re-gated on the TRACE with an explicit row count; run 00's probe
+      submit has the same defect and is in another session's scope.
+      Canon proposal 2026-08-27-1400-probe-overrides-can-silence-a-gate.
+    * PRODUCTIONS SUBMITTED by Erik 2026-08-27T13:5xZ, before the probe
+      .out files were read -- both turned out fine, and the risk was low
+      (identical input bodies to run 00, which ran 10 tasks clean), but it
+      is on the record that the gate check happened after the fact.
+      - 22734031  run 01 fine bracket, array 0-3 (mu -2.49..-2.46), L10.
+        All four RUNNING at 13:5xZ, step 700, x = 0.014-0.021.
+      - 22734032  run 02 size scan, array 0-5 (mu -2.50..-2.45), L14.
+        All six RUNNING, step 500-560, x = 0.0067-0.011.
+    * Thread 04 array 22733466: only task _0 has started; task _1 was still
+      PENDING at 13:35Z. Normal, not a fault -- but a harvest session must
+      confirm BOTH tasks ran before comparing the two boundary conditions.
+    * ALSO HANDED 2026-08-27T11:3xZ (strict-A): thread 05 RUN 01, the FINE
+      900 K bracket -- 4 points at 0.01 eV inside run 00's (-2.50, -2.45),
+      probe then array, staging block included (new remote dir, so
+      --rsync-path mkdir per the first-hand-off-into-a-new-tree rule).
+      Input body verified IDENTICAL to run 00's by diff; bash -n clean.
+    * DOWNLOAD, PARTIAL AND DELIBERATELY SO: sshfs mount measured at
+      7.9 MB/s (bs=8M; 3.7 at bs=1M), and the device shell is capped at
+      45 s and KILLS BACKGROUND PROCESSES on return, so 23.5 GB would be
+      ~120 round-trips. Pulled instead: the 233 MB final cell, and five
+      complete frames (steps 570000-610000) extracted by SEEKING to the
+      byte range around the avalanche. Full trajectory left to Erik's
+      direct rsync (block 2b), which does not pay the sshfs penalty.
+- work_done: |
+    * THREAD 02 HARVESTED AND ANALYSED. Curated mirror on the Mac (thermo,
+      log, .out). Stress corrected for vacuum dilution (f = 1.1250; the raw
+      whole-cell number understates every stress by 11 %). Biaxial modulus
+      196.4 GPa (checks against C11+C12-2C12^2/C11 ~ 202 GPa). NUCLEATION at
+      eps = 5.25 %, sigma = 6.22 GPa (step 580000), single avalanche with a
+      5.74 GPa load drop -- NOT the 1.15 % that a deviation-from-linearity
+      tolerance reports (that is nonlinear elasticity). Hold relaxes 0.25 GPa.
+      Plastic strain 5.46 % at peak -> 1.25 % after unload (4.21 % recovered);
+      residual 1.00 % permanent, lx 212.21 -> 214.34 A.
+    * THE DISLOCATED SLAB IS CHARACTERISED. DXA on the final stress-free cell:
+      610 segments, L = 9455 A, rho = 4.9e16 m^-2 (4.5 nm spacing). Shockley
+      partials on wide faults, 1/6<011> stair-rod locks, 1/3<111> Frank loops;
+      piled against the fixed base, clean under the free surface. Figures +
+      viz cards + .ovito session + prov sidecars in analysis/.
+      FLAG FOR ERIK: 4.9e16 m^-2 may be too dense to charge as a "film".
+    * 900 K MU BRACKET REPORTED, thread 05 run 00. mu_t(900 K) = -2.475 +-
+      0.025 eV, bracket (-2.50, -2.45); shift -0.200 eV vs mu_t(300 K).
+      Widest empty x interval 0.477 with 0 converged points inside (~1 at
+      300 K) -- the two-phase gap has halved; the 0.05 eV grid cannot decide
+      whether it is still first order. All x > 1.05 points still need a
+      crystallinity check (final-state files mirrored, no cluster time).
+      THREADS 05 AND 06 ARE UNBLOCKED. The thread-03 mu window (-2.45 ->
+      -2.10) must be SHIFTED DOWN for 900 K, not reused.
+    * NUCLEATION EVENT CAUGHT from the extracted frames: DXA gives 0
+      segments at step 570000 (pristine) and exactly 1 segment, L = 77 A,
+      at step 580000 -- a Shockley partial b = 1/6[-1-12], xi = [1-10],
+      88 deg edge. So the 5.74 GPa load drop follows a SINGLE surface
+      emission event 10 ps earlier, and 6.22 GPa is a measurement of the
+      homogeneous surface-emission stress at 300 K / 1e8 1/s.
+      CAVEAT ON RECORD: PTM cannot classify these frames (everything reads
+      "Other" at 5.25 % strain; rmsd_cutoff 0.25 and 0.0 both applied per
+      the prov sidecars and neither helped), so the RENDERED IMAGES of the
+      nucleation frames carry no structural information. DXA is unaffected
+      -- it works on the elastically mapped Burgers circuit, not PTM labels.
+      Frames 590000/600000/610000 are on disk and NOT yet analysed.
+    * Artefacts written: analysis/analyse-biaxial-misfit-cycle_*.py,
+      biaxial-misfit-cycle-summary_*.dat, fig3_*.{pdf,png},
+      analyse-mu-bracket-900K_*.py, mu-bracket-900K-summary_*.dat,
+      fig4_*.{pdf,png}, the two DXA viz cards + PNGs + .ovito + prov,
+      HANDOFF-2026-08-27.md (219 lines, lint-handoff clean); thread.md updated
+      for threads 02 and 05; thread 05 run 01 (fine bracket) input + probe +
+      production submits written; 4 canon proposals filed.
+- notes: |
+    Cloud Cowork session on M5's connected folders (DEVEL, SIMULATIONS,
+    cluster-mounts/cmmg). WALLTIME RE-DERIVATION done from thread 01's
+    MEASURED per-phase Loop times (fixlat rate B: settle 66.8 s / charge
+    68571 s / hold 33478 s / discharge 107342 s / degas 13566 s = 61.9 h
+    for 8.01 ns) rather than a fresh estimate -- thread 03 projects ~80 h
+    (fixlat) / ~84 h (freelat) against the 96 h cap, so the degas does NOT
+    need splitting. Thread 04's dome is NOT cheaper than the full layer
+    despite a 14x smaller catalogue (probe MC phases 37-49 steps/s vs
+    thread 03's 57-58) -- suspected MPI load imbalance on the small MC
+    region; flagged to Erik and to be recorded in thread 04's thread.md.
+- closed: 2026-08-29T15:53Z
+- summary: |
+    Closed by 2026-08-29-1520-hydride-cycle-status, which reconciled every loop
+    this entry left open (they sat 2 days). OUTCOMES: thread 03's two productions
+    FAILED on the mc/sites discharge consistency check, not on walltime, ~35 h x
+    1024 ranks each, restarts on disk; thread 04's two tasks are ALIVE and past
+    the step where 03 died; thread 05 runs 01+02 all 10 tasks complete and now
+    transferred to ni-h-phase-diagram-eam-meam as runs 16+17, where they RETIRE
+    this entry's 0.477 empty-interval reading. in_flight was non-empty at close
+    and is discharged in the successor's step_1b, not carried.
+- handoff_to: 2026-08-29-1520-hydride-cycle-status
+
 
 ### session_id: 2026-08-29-1442-designer-inbox-merge
 - mode: designer

@@ -3866,3 +3866,225 @@ uses the isotherm's OWN tabulated mu (0.03 eV spacing) rather than a round
 nothing is interpolated anywhere in the pre-fill path. Where a driver can
 choose its sample points, choosing the ones the upstream data actually has
 beats interpolating onto a tidier grid.
+
+---
+
+## 2026-08-29-1525-name-the-aim-not-just-the-number
+
+**status: merged** -- 2026-08-29 designer pass (session 2026-08-29-1915-designer-inbox-merge).
+
+**Designer review.** MERGED into `preferences.md` "Communication style", beside
+the spell-out-abbreviations rule -- both are about not making Erik reconstruct
+context the session already has. Taken essentially as proposed; the worked
+example was kept, because the rule is hard to follow from an abstract statement
+and trivial once the two phrasings sit side by side. The proposal's closing
+observation was promoted into the rule rather than left as rationale: a reader
+who does not know the aim cannot tell a decisive result from a routine one, so
+every unlabelled number is read at the same weight.
+
+The note about `scope:` fields in SESSIONS.md and the hand-off template was
+folded into the rule's list of places a first mention occurs, rather than made a
+separate item -- it is the same rule applied to a different surface, and a
+second bullet would have invited sessions to treat chat and files differently.
+
+
+*Filed by pilot session 2026-08-29-1520-hydride-cycle-status.*
+
+**Proposed home:** `canon/preferences.md`, with the other output/reporting
+rules. It is a standing preference of Erik's, not a lesson from a failure.
+
+**Rule.** A thread or run is NEVER referred to by its number alone. Every
+first mention in a response, a status readout, a table row, a figure caption
+or a hand-off carries its AIM in the same breath -- one clause, what the run
+is meant to answer, not what it is named:
+
+> not "thread 05 runs 01 and 02 -- all ten tasks complete"
+> but "thread 05 runs 01+02, the fine 900 K mu bracket and its L14 size
+>     check (is the 900 K transition still first order, and is the gap
+>     physical or finite-size?) -- all ten tasks complete"
+
+The directory name is not the aim. `05_CHARGE-DISCHARGE-RATEB-900K` says
+what the run IS; it does not say what it is FOR, and the aim is the part
+Erik needs in order to judge whether a result matters. Subsequent mentions
+in the same response may use the short number once the aim is on the record.
+
+Where the aim is genuinely unknown to the session, the honest form is to say
+so ("thread 04, aim not stated in thread.md") rather than to quote the
+folder name as if it were a purpose. That is also a signal the thread.md
+needs a one-line aim at the top.
+
+**Erik, 2026-08-29:** "always mention the aim of a thread and not just the
+thread and run number."
+
+**Where it bit.** This session's own opening status readout for
+ni-h-hydride-cycle-eam. It reported "Thread 05 runs 01 and 02 -- all ten
+tasks complete, gates pass, and they answer the question", gave the full
+x(mu) table for both, and drew the conclusion that the empty interval was a
+grid artefact -- without ever saying that run 01 is the 0.01 eV fine bracket
+inside run 00's (-2.50, -2.45) and run 02 is the same six mu repeated at
+L = 14 to test whether the interval WIDTH is finite-size. Erik had to ask
+what the runs were for before the result meant anything, and the readout's
+most load-bearing sentence ("not finite size either") was unreadable until
+he did.
+
+The cost is asymmetric and that is why this is worth a rule: a reader who
+does not know the aim cannot tell a decisive result from a routine one, so
+every unlabelled number is read at the same weight -- which is exactly the
+failure mode a status readout exists to prevent.
+
+**Note for the merging designer.** Consider a companion line in
+`canon/session-startup.md` step 5 (the startup brief) and in the hand-off
+template: the scope summary has the same defect, since `scope:` fields in
+SESSIONS.md are also written as thread numbers plus protocol names.
+
+---
+
+## 2026-08-29-1610-index-before-you-trust-a-frame-walker
+
+**status: merged** -- 2026-08-29 designer pass (session 2026-08-29-1915-designer-inbox-merge), as **L49**.
+
+**Designer review.** MERGED to `canon/lessons.md` as a numbered lesson rather
+than to `learnings.md` as the proposal suggested. Reason: it prescribes a
+concrete technique against a concrete failure mode, which is what lessons.md is
+for; `learnings.md` holds process-level meta-lessons. The cross-reference to
+"test the composition not the piece" is kept, and the proposal's argument for
+why that rule does not already cover this -- a frame walker has no callee and no
+guard, so its wrong answer is a valid file -- was promoted into the lesson body,
+since it is the reason the lesson exists.
+
+**ABSORBED FROM PROPOSAL 2026-08-29-1905:** its second half ("a stated
+expectation is part of the command") landed here, not in preferences.md. That
+half is not about hand-offs at all -- it is the same defect as the frame-skip,
+one layer up: the tool did not do what its own documentation said. Splitting it
+this way keeps the hand-off rule about hand-offs and gives both halves of the
+extractor incident one home. Both incidents are recorded in L49's "where it
+bit", because a single tool producing the same class of silent error twice is
+the evidence, not two separate anecdotes.
+
+
+*Filed by pilot session 2026-08-29-1520-hydride-cycle-status.*
+
+**Proposed home:** `canon/lessons.md` as a numbered lesson, cross-referenced
+from `learnings.md` next to "test the composition not the piece" (merged
+2026-08-29) -- this is the same family, but the failure is silent where that
+one was loud.
+
+**Rule.** Any code that walks a trajectory frame by frame -- an extractor, a
+decimator, a per-frame analysis loop -- must be validated against a file whose
+frame count is known INDEPENDENTLY of the walker, before it is used or handed
+over. Two cheap fixtures, and both are needed:
+
+1. a synthetic file with a handful of frames at known timesteps and the real
+   column set, written by the test itself;
+2. a real file from the same family, whose expected frame count comes from the
+   submit script's dump cadence and step bounds, not from the walker.
+
+And the walker should offer an `--list`/index mode that prints
+`N frames, M atoms, steps a .. b` and writes a step/offset index. Run that FIRST
+on any new trajectory: it is one sequential read, it makes the walker state its
+own understanding of the file out loud, and the index makes every later cut a
+seek instead of a scan.
+
+**Where it bit.** ni-h-hydride-cycle-eam, 2026-08-29, writing
+`tools/extract-ovito-frames_ni-h-cycle.py` to cut OVITO-sized subsets out of the
+7-25 GB cycle trajectories. The header parser consumed **ten** lines for the
+nine-line LAMMPS dump header, eating the first atom of every frame. The caller
+then skipped `natoms` body lines, ran one line into the next frame's header, and
+resynchronised only at the frame after -- so the tool silently kept **every other
+frame**.
+
+Nothing about the output looked wrong. The extracted dump was well-formed, every
+column present, timesteps monotonic and evenly spaced. A `--list` on a real
+isotherm dump reported "23 frames, steps 0 .. 88000" -- entirely plausible, and
+it was 23 of the 45 that were there. What exposed it was the synthetic fixture:
+four frames written, two found. Had this gone to the cluster as handed, it would
+have produced half-length animations and a `--steps` request that quietly
+returned the wrong nearest frame, with a `.frameindex` sidecar attesting to it.
+
+**Why it deserves its own lesson rather than a note on the existing one.** The
+merged 2026-08-29 rule is about testing a driver against the CALLEE's guards --
+it works because the callee refuses bad input loudly. Here there is no callee
+and no guard: a frame walker's wrong answer is a valid file. The only defence is
+a case where the right answer is known before the code runs, which is why the
+fixture, not the review, is the deliverable.
+
+**Generalises to:** anything that parses a self-delimiting record format by
+counting lines -- XDATCAR, xyz frames, multi-frame CFG, and the per-atom blocks
+inside a single dump frame.
+
+---
+
+## 2026-08-29-1905-a-handoff-command-runs-in-a-shell-you-are-not-in
+
+**status: merged in part** -- 2026-08-29 designer pass (session 2026-08-29-1915-designer-inbox-merge). SPLIT.
+
+**Designer review.** The proposal bundled two rules that do not belong together,
+so it was split at the merge rather than merged whole:
+
+- **The glob/quoting half MERGED** into `preferences.md` "Command hand-offs",
+  after the new-tree `mkdir` bullet. Strengthened from the proposal's "prefer no
+  globs" to a flat "no globs in hand-off commands", with the `--include`/
+  `--exclude` filter form given as a copy-pasteable skeleton -- the section's
+  other rules are all imperatives, and a hedge here would have left the failing
+  form available. The zsh-specific fact (an unmatched glob is an error, not a
+  pass-through) is stated explicitly, because it is the part a session composing
+  from bash habits will not know. The requirement to test the form against a
+  mock tree before offering it was added at merge; it is what actually caught
+  the replacement.
+
+- **The stated-expectation half MOVED** to L49, where the other half of the same
+  incident already lives. See that entry's review note.
+
+The proposal's closing point -- that both failures share L42's shape, something
+true in the writing session's head and false in the shell that had to run it --
+is kept in the preferences.md bullet, since that framing is what makes the rule
+memorable rather than arbitrary.
+
+
+*Filed by pilot session 2026-08-29-1520-hydride-cycle-status.*
+
+**Proposed home:** `canon/preferences.md`, "Command hand-offs" -- next to the
+absolute-paths rule and the machine-tag rule, which exist for the same reason.
+
+**Rule.** A hand-off command is written by a session that will never run it, in
+a shell it is not in. Two consequences, both cheap to honour:
+
+- **Erik's login shell is zsh.** An unquoted glob that matches nothing locally
+  is an ERROR in zsh (`no matches found`), not a pass-through as in bash. So a
+  remote glob in an `rsync`/`scp` source cannot be written bare -- and quoting
+  the whole source to protect it from zsh ALSO stops the remote shell expanding
+  it, and merges multiple space-separated paths into one literal filename.
+  **Prefer no globs at all**: explicit absolute paths, or `--include`/`--exclude`
+  filter rules with a single source directory. Filter rules are the robust form
+  for "pull this subtree from several places", and they need no shell quoting
+  anywhere.
+- **A stated expectation is part of the command.** If the hand-off says what the
+  output should look like, that sentence must be true of the code as written,
+  not of the code as intended.
+
+**Where it bit.** Both halves, in the same hand-off, on the same day.
+
+*The glob half.* `HANDOFF-2026-08-29.md` block 3 offered
+`rsync ... host:'/…/./0[34]_*/results/*/for-ovito /…/*.frameindex' dest/`. It
+failed with `link_stat "…0[34]_*…for-ovito /…*.frameindex" failed: No such file
+or directory` -- one quoted argument, so no expansion on either side, and the
+space read as part of the filename. Replaced with
+`--include='*/' --include='for-ovito/***' --include='*.frameindex' --exclude='*'`
+against a single source root, tested against a mock tree of the same shape
+before it was offered a second time.
+
+*The stated-expectation half.* The same hand-off, and the submit script's own
+comment, both said the extractor keeps "the phase boundaries **+ the last frame,
+always**". The `--steps` code path never appended the last frame; only `--every`
+did. Job 22738636 therefore wrote 5 frames per run instead of 6 and silently
+dropped step 4300000 -- thread 03 fixlat's final state, 37k steps before the
+`mc/sites` abort, and the single most interesting frame in the run. It cost a
+re-submit. Nobody would have noticed from the output alone: five frames is a
+perfectly plausible number.
+
+**The generalisable bit.** Both failures are the same shape as L42 (a cluster
+name is not a host): the session emitted something that was true in its own head
+and false in the shell that had to run it. The mitigation is the same too --
+resolve or test the thing in the environment that will execute it, and where
+that is impossible, prefer the form that has no environment-dependent behaviour
+left in it.

@@ -152,6 +152,31 @@ Pilot-maintained. Pilot proposes new entries; Erik confirms.
   abbreviations: no clue what : D_H(T) MSD means?"*). Treat as a standing
   preference, not a one-off -- it is not the first jargon-density feedback.
 
+- **Name the aim, not just the thread and run number.** A thread or run is never
+  referred to by its number alone. Every first mention -- in a response, a status
+  readout, a table row, a figure caption, a hand-off, a `scope:` field -- carries
+  in the same breath the question the run exists to answer:
+
+  > not "thread 05 runs 01 and 02 -- all ten tasks complete"
+  > but "thread 05 runs 01+02, the fine 900 K mu bracket and its L14 size check
+  >     (is the transition still first order, and is the gap physical or
+  >     finite-size?) -- all ten tasks complete"
+
+  The directory name is not the aim: `05_CHARGE-DISCHARGE-RATEB-900K` says what
+  the run IS, never what it is FOR, and the aim is the half Erik needs in order
+  to judge whether a result matters. Later mentions in the same response may use
+  the bare number once the aim is on the record. Where the aim is genuinely
+  unknown to the session, say so ("thread 04, aim not stated in thread.md")
+  rather than quoting the folder name as if it were a purpose -- that is also
+  the signal that the thread.md needs a one-line aim at its top.
+  Set 2026-08-29 (Erik: *"always mention the aim of a thread and not just the
+  thread and run number"*), after a status readout gave the full x(mu) table for
+  two runs and drew a conclusion from them without ever saying what either run
+  was for. The cost is asymmetric, which is why this is a rule: a reader who
+  does not know the aim cannot tell a decisive result from a routine one, so
+  every unlabelled number is read at the same weight -- precisely the failure a
+  status readout exists to prevent.
+
 ## Output style
 
 - **Ask what to write out, and how often, before writing the input.** The
@@ -398,6 +423,34 @@ the design, not in a follow-up. Surfaced 2026-05-31 Thread 03.
   ni-melting-point-eam thread 01 staging block assumed
   `/cmmc/ptmp/<CLUSTER_USER>/NI-MELTING-POINT-EAM/` existed. It did not, and the
   transfer died with `mkdir ... failed: No such file or directory`.)
+
+- **Write commands for the shell that will run them, and prefer forms with no
+  shell-dependent behaviour left in them.** A hand-off is composed by a session
+  that never executes it. **Erik's login shell is zsh**, where a glob matching
+  nothing is a hard error (`no matches found`) rather than a pass-through as in
+  bash -- so a remote glob in an `rsync`/`scp` source cannot be written bare.
+  Quoting the source to protect it from the local shell does not rescue it
+  either: quoting also stops the REMOTE shell expanding it, and collapses
+  several space-separated paths into one literal filename.
+
+  So: **no globs in hand-off commands.** Use explicit absolute paths (which the
+  first rule in this section already requires), or, when the task is "pull this
+  subtree from several places", `--include` / `--exclude` filter rules against a
+  single source directory:
+
+  ```
+  rsync -avh --progress -m \
+    --include='*/' --include='<subdir>/***' --include='*.<ext>' --exclude='*' \
+    <user>@<host>:<absolute remote root>/ <absolute local root>/
+  ```
+
+  Filter rules need no shell quoting on either side and rebuild the directory
+  layout themselves. Test the form against a mock tree of the same shape before
+  offering it. (Set 2026-08-29: a two-path quoted rsync source died with
+  `link_stat "…0[34]_*…for-ovito /…*.frameindex" failed: No such file or
+  directory` -- one argument, no expansion on either side, the space read as
+  part of the filename. Same shape as L42: something true in the writing
+  session's head and false in the shell that had to run it.)
 
 ## Plot defaults
 

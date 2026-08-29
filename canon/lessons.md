@@ -1476,3 +1476,56 @@ raises.
 
 **Target:** every `.log`-parsing harvest script. `style/lammps.md` 1.20.
 
+
+## L49 -- a frame walker's wrong answer is a valid file; index it against a count you got elsewhere
+
+**Rule:** Any code that walks a trajectory frame by frame -- an extractor, a
+decimator, a per-frame analysis loop -- is validated against a frame count
+obtained INDEPENDENTLY of the walker before it is used or handed over. Two
+fixtures, both cheap, both needed:
+
+1. a synthetic file with a handful of frames at known timesteps and the REAL
+   column set, written by the test itself;
+2. a real file of the same family, whose expected frame count comes from the
+   submit script's dump cadence and step bounds -- not from the walker.
+
+Give the walker a `--list` mode that prints `N frames, M atoms, steps a .. b`
+and writes a step/offset index, and run it FIRST on any new trajectory: one
+sequential read, it makes the tool state its understanding of the file out loud,
+and the index turns every later cut into a seek instead of a scan.
+
+**And: a stated expectation is part of the code.** If the hand-off, the submit
+script's comment, or the chat says what the output will contain, that sentence
+must be true of the code as written, not as intended. Documented behaviour the
+code does not have is a bug in the code.
+
+**Why this is not covered by "test the composition not the piece"** (learnings.md,
+merged 2026-08-29): that rule works because the callee has guards that refuse bad
+input loudly. A frame walker has no callee and no guard. Its output is a
+well-formed dump whichever answer it gave, so the only defence is a case whose
+right answer was known before the code ran.
+
+**Where it bit:** 2026-08-29, ni-h-hydride-cycle-eam, writing an extractor to cut
+OVITO-sized subsets out of the 7-25 GB cycle trajectories. Twice, in one tool.
+
+- The header parser consumed TEN lines of the nine-line LAMMPS dump header,
+  eating the first atom of every frame; the caller then skipped `natoms` body
+  lines, ran one line into the next header, and resynchronised only at the frame
+  after -- so it silently kept **every other frame**. Nothing looked wrong:
+  columns all present, timesteps monotonic and evenly spaced. `--list` on a real
+  dump reported "23 frames, steps 0 .. 88000", entirely plausible, and it was 23
+  of the 45 that were there. The synthetic fixture is what exposed it: four
+  frames written, two found.
+- The `--steps` path never appended the final frame, while the submit script's
+  comment and the hand-off both promised "the phase boundaries + the last frame,
+  always". Job 22738636 wrote 5 frames per run instead of 6 and dropped step
+  4300000 -- thread 03 fixlat's last state, 37k steps before the `mc/sites`
+  abort, the most interesting frame in the run. Five frames is a plausible
+  number; only the promise made it visibly wrong. Cost: one re-submit.
+
+**Generalises to:** anything parsing a self-delimiting record format by counting
+lines -- XDATCAR, xyz frames, multi-frame CFG, and the per-atom blocks inside a
+single dump frame.
+
+**Target:** `style/shell.md` and any per-frame analysis driver. See also
+learnings.md "test the composition not the piece" and L42.
